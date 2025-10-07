@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>French Learning Companion</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Inter font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f9;
+        }
+        .lesson-card {
+            transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out;
+            cursor: pointer;
+            perspective: 1000px;
+        }
+        .flip-container {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flip-container.flipped {
+            transform: rotateY(180deg);
+        }
+        .front, .back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* Safari */
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .front {
+            background-color: #ffffff;
+            color: #1e40af; /* Blue */
+        }
+        .back {
+            background-color: #1e40af; /* Blue */
+            color: #ffffff;
+            transform: rotateY(180deg);
+        }
+    </style>
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+        setLogLevel('Debug');
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'french-learner-default';
+
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        // --- LESSON DATA ---
+        const LESSONS = [
+            { id: 1, title: "Greetings & Politeness", progressKey: "greetings", cards: [
+                { french: "Bonjour", english: "Hello / Good day" },
+                { french: "Au revoir", english: "Goodbye" },
+                { french: "S'il vous plaît", english: "Please (formal)" },
+                { french: "Merci", english: "Thank you" },
+                { french: "De rien", english: "You're welcome" },
+            ]},
+            { id: 2, title: "Basic Statements", progressKey: "statements", cards: [
+                { french: "Oui", english: "Yes" },
+                { french: "Non", english: "No" },
+                { french: "Je suis", english: "I am" },
+                { french: "Tu es", english: "You are (informal)" },
+                { french: "Comment ça va ?", english: "How are you? (informal)" },
+            ]},
+            { id: 3, title: "Numbers (1-5)", progressKey: "numbers_1_5", cards: [
+                { french: "Un", english: "One" },
+                { french: "Deux", english: "Two" },
+                { french: "Trois", english: "Three" },
+                { french: "Quatre", english: "Four" },
+                { french: "Cinq", english: "Five" },
+            ]},
+            // --- NEW LESSONS FOR QUICKER IMPROVEMENT ---
+            { id: 4, title: "Colors", progressKey: "colors", cards: [
+                { french: "Rouge", english: "Red" },
+                { french: "Bleu", english: "Blue" },
+                { french: "Vert", english: "Green" },
+                { french: "Jaune", english: "Yellow" },
+                { french: "Noir", english: "Black" },
+                { french: "Blanc", english: "White" },
+            ]},
+            { id: 5, title: "Articles (Le, La, Les)", progressKey: "articles", cards: [
+                { french: "Le", english: "The (masculine singular)" },
+                { french: "La", english: "The (feminine singular)" },
+                { french: "Les", english: "The (plural)" },
+                { french: "Un", english: "A / An (masculine)" },
+                { french: "Une", english: "A / An (feminine)" },
+            ]},
+            { id: 6, title: "Verb: Être (To Be)", progressKey: "etre", cards: [
+                { french: "Je suis", english: "I am" },
+                { french: "Tu es", english: "You are (informal)" },
+                { french: "Il/Elle est", english: "He/She/It is" },
+                { french: "Nous sommes", english: "We are" },
+                { french: "Vous êtes", english: "You are (formal/plural)" },
+                { french: "Ils/Elles sont", english: "They are (M/F plural)" },
+            ]},
+        ];
+
+        window.LESSONS = LESSONS;
+        window.currentProgress = {};
+        window.currentLessonIndex = 0;
+        window.currentCardIndex = 0;
+        window.isFlipped = false;
+        
+        // --- NEW STATE FOR REVIEW MODE ---
+        window.currentMode = 'practice'; // 'practice' or 'review'
+        window.activeCardList = LESSONS[0].cards; // The list of cards currently being displayed
+
+        // Utility function for exponential backoff retry
+        const withRetry = async (fn, maxRetries = 3) => {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    return await fn();
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        };
+
+        // --- FIREBASE/FIRESTORE FUNCTIONS ---
+
+        const getProgressDocRef = () => {
+            if (!userId) return null;
+            const progressCollectionPath = `/artifacts/${appId}/users/${userId}/french_progress`;
+            return doc(db, progressCollectionPath, "data");
+        };
+
+        const loadProgress = () => {
+            const docRef = getProgressDocRef();
+            if (!docRef || !isAuthReady) {
+                console.log("Firestore not ready or unauthorized, skipping progress load.");
+                return;
+            }
+
+            // Listen for real-time updates to user progress
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    window.currentProgress = docSnap.data().progress || {};
+                    console.log("Progress loaded:", window.currentProgress);
+                    // Ensure the initial activeCardList is set based on the first lesson
+                    window.activeCardList = LESSONS[window.currentLessonIndex].cards; 
+                    renderApp(); // Re-render application state
+                } else {
+                    console.log("No progress data found, initializing empty progress.");
+                    window.currentProgress = {};
+                    window.activeCardList = LESSONS[window.currentLessonIndex].cards;
+                    renderApp(); // Initial render
+                }
+            }, (error) => {
+                console.error("Error listening to progress:", error);
+            });
+        };
+
+        const saveProgress = async () => {
+            const docRef = getProgressDocRef();
+            if (!docRef || !isAuthReady) {
+                console.warn("Cannot save progress: Firestore not ready or unauthorized.");
+                return;
+            }
+
+            const dataToSave = {
+                progress: window.currentProgress,
+                lastUpdated: new Date().toISOString()
+            };
+
+            try {
+                await withRetry(() => setDoc(docRef, dataToSave, { merge: true }));
+                console.log("Progress saved successfully!");
+            } catch (error) {
+                console.error("Failed to save progress:", error);
+                showNotification("Failed to save progress. Check console for details.", 'error');
+            }
+        };
+
+        const initFirebase = async () => {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    console.warn("Firebase config not available. App will run without persistence.");
+                    document.getElementById('loading-message').textContent = "Running without cloud persistence.";
+                    isAuthReady = true;
+                    userId = crypto.randomUUID(); // Mock ID for local functions
+                    window.activeCardList = LESSONS[0].cards;
+                    renderApp();
+                    return;
+                }
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                const authPromise = new Promise(resolve => {
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                        } else {
+                            try {
+                                if (initialAuthToken) {
+                                    const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                                    userId = userCredential.user.uid;
+                                } else {
+                                    const userCredential = await signInAnonymously(auth);
+                                    userId = userCredential.user.uid;
+                                }
+                            } catch (error) {
+                                console.error("Authentication failed:", error);
+                                userId = crypto.randomUUID(); // Fallback
+                            }
+                        }
+                        isAuthReady = true;
+                        resolve();
+                    });
+                });
+
+                await authPromise;
+                document.getElementById('user-id-display').textContent = `User ID: ${userId.substring(0, 8)}...`;
+                loadProgress();
+
+            } catch (error) {
+                console.error("Failed to initialize Firebase:", error);
+                document.getElementById('loading-message').textContent = "Error initializing Firebase. Check console.";
+            }
+        };
+
+        // --- UI & APPLICATION LOGIC ---
+
+        const showNotification = (message, type = 'info') => {
+            const notification = document.getElementById('notification-box');
+            notification.textContent = message;
+            notification.className = `p-3 rounded-xl text-sm transition-all duration-300 ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-100 text-green-800'} shadow-lg`;
+            notification.style.opacity = 1;
+            setTimeout(() => {
+                notification.style.opacity = 0;
+            }, 3000);
+        };
+
+        window.startSpeedReview = () => {
+            window.currentMode = 'review';
+
+            let reviewCards = [];
+            // Collect cards from all lessons, prioritizing incomplete ones
+            LESSONS.forEach(lesson => {
+                const isCompleted = window.currentProgress[lesson.progressKey];
+                // Prioritize incomplete lessons 3x more
+                let multiplier = isCompleted ? 1 : 3; 
+
+                // Add cards based on multiplier
+                for (let i = 0; i < multiplier; i++) {
+                    lesson.cards.forEach(card => {
+                        // Attach the lesson title for display in review mode
+                        reviewCards.push({...card, lessonTitle: lesson.title});
+                    });
+                }
+            });
+
+            // Simple shuffle (Fisher-Yates)
+            for (let i = reviewCards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [reviewCards[i], reviewCards[j]] = [reviewCards[j], reviewCards[i]];
+            }
+
+            window.activeCardList = reviewCards;
+            window.currentCardIndex = 0;
+            window.isFlipped = false;
+            showNotification(`Starting Speed Review Mode with ${reviewCards.length} cards!`);
+            renderApp();
+        };
+
+        window.selectLesson = (index) => {
+            window.currentMode = 'practice';
+            window.currentLessonIndex = index;
+            window.currentCardIndex = 0;
+            window.isFlipped = false;
+            window.activeCardList = LESSONS[index].cards;
+            renderApp();
+        };
+
+        window.flipCard = () => {
+            window.isFlipped = !window.isFlipped;
+            const flipContainer = document.getElementById('flip-container');
+            if (flipContainer) {
+                flipContainer.classList.toggle('flipped', window.isFlipped);
+            }
+        };
+
+        window.nextCard = () => {
+            const list = window.activeCardList;
+            if (window.currentCardIndex < list.length - 1) {
+                window.currentCardIndex++;
+                window.isFlipped = false;
+                renderApp();
+            } else {
+                // End of the list reached
+                if (window.currentMode === 'practice') {
+                    const lesson = LESSONS[window.currentLessonIndex];
+                    markLessonComplete(lesson.progressKey);
+                    showNotification(`Lesson "${lesson.title}" completed!`);
+                    // Automatically move to the next lesson if available
+                    if (window.currentLessonIndex < LESSONS.length - 1) {
+                        window.selectLesson(window.currentLessonIndex + 1);
+                    } else {
+                        // Loop back to the first lesson
+                        window.selectLesson(0);
+                    }
+                } else {
+                    showNotification(`Speed Review finished! You reviewed ${list.length} cards.`);
+                    // Reset to the first lesson after review
+                    window.selectLesson(0);
+                }
+            }
+        };
+
+        window.prevCard = () => {
+            if (window.currentCardIndex > 0) {
+                window.currentCardIndex--;
+                window.isFlipped = false;
+                renderApp();
+            }
+        };
+
+        const markLessonComplete = (key) => {
+            if (!window.currentProgress[key]) {
+                window.currentProgress[key] = true;
+                saveProgress();
+            }
+        };
+
+        const renderApp = () => {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+
+            const list = window.activeCardList;
+            const card = list[window.currentCardIndex];
+            const isReviewMode = window.currentMode === 'review';
+
+            // 1. Render Mode Display & Lesson Navigation Visibility
+            document.getElementById('current-mode-display').textContent = isReviewMode ? 'Speed Review' : 'Practice';
+            document.getElementById('lesson-nav-container').style.display = isReviewMode ? 'none' : 'block';
+
+
+            // 2. Render Lesson Navigation (Practice Mode Only)
+            const navContainer = document.getElementById('lesson-nav');
+            if (!isReviewMode) {
+                const lesson = LESSONS[window.currentLessonIndex];
+                const isCompleted = window.currentProgress[lesson.progressKey];
+
+                navContainer.innerHTML = LESSONS.map((l, index) => {
+                    const isActive = index === window.currentLessonIndex;
+                    const isDone = window.currentProgress[l.progressKey];
+                    return `
+                        <button onclick="selectLesson(${index})"
+                            class="p-3 text-sm font-medium rounded-xl transition duration-150 ease-in-out
+                            ${isActive ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'}
+                            ${isDone && !isActive ? 'border-2 border-green-500 text-green-700' : 'border border-gray-200'}
+                            ">
+                            ${l.title}
+                            ${isDone ? '<span class="ml-2">✅</span>' : ''}
+                        </button>
+                    `;
+                }).join('');
+            }
+
+
+            // 3. Render Card Container and Details
+            const cardContainer = document.getElementById('card-container');
+            const cardDetail = document.getElementById('card-detail');
+
+            cardContainer.innerHTML = `
+                <div id="flip-container" class="flip-container h-80 w-full" onclick="flipCard()">
+                    <div class="front">
+                        <div class="text-center">
+                            <p class="text-2xl font-semibold mb-2 text-gray-500">French</p>
+                            <h2 class="text-5xl font-extrabold">${card.french}</h2>
+                            <p class="mt-4 text-sm text-gray-400">Click to reveal English!</p>
+                            ${isReviewMode ? `<p class="mt-2 text-xs text-indigo-400">From: ${card.lessonTitle}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="back">
+                        <div class="text-center">
+                            <p class="text-2xl font-semibold mb-2 text-indigo-200">English Translation</p>
+                            <h2 class="text-4xl font-extrabold">${card.english}</h2>
+                            ${isReviewMode ? `<p class="mt-4 text-sm text-indigo-200">${card.lessonTitle}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Ensure the initial flip state is correct
+            if (window.isFlipped) {
+                document.getElementById('flip-container').classList.add('flipped');
+            }
+
+            // 4. Render Card Details
+            const totalCards = list.length;
+            const currentCardNumber = window.currentCardIndex + 1;
+            
+            let detailText = `Card: ${currentCardNumber} of ${totalCards}`;
+
+            if (!isReviewMode) {
+                const lesson = LESSONS[window.currentLessonIndex];
+                const isCompleted = window.currentProgress[lesson.progressKey];
+                detailText = `Lesson: <span class="font-semibold">${lesson.title}</span> | ${detailText} ${isCompleted ? ' (COMPLETED)' : ''}`;
+            } else {
+                 detailText = `Mode: <span class="font-semibold">Speed Review</span> | ${detailText}`;
+            }
+
+            cardDetail.innerHTML = `<p class="text-sm text-gray-500 mt-4">${detailText}</p>`;
+
+            // 5. Render Navigation Buttons
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+            const isLastCard = window.currentCardIndex === totalCards - 1;
+
+            btnPrev.disabled = window.currentCardIndex === 0;
+
+            if (isLastCard) {
+                btnNext.textContent = isReviewMode ? "Finish Review" : "Mark Complete & Next Lesson";
+                btnNext.className = `p-3 rounded-xl font-semibold transition duration-150 bg-green-600 text-white hover:bg-green-700`;
+            } else {
+                btnNext.textContent = "Next Card";
+                btnNext.className = `p-3 rounded-xl font-semibold transition duration-150 bg-indigo-600 text-white hover:bg-indigo-700`;
+            }
+            
+            btnPrev.className = `p-3 rounded-xl font-semibold transition duration-150 ${window.currentCardIndex === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'}`;
+        };
+
+        window.onload = () => {
+            initFirebase();
+        };
+    </script>
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+
+    <div id="notification-box" style="opacity: 0; position: fixed; top: 1rem; right: 1rem; z-index: 50;"></div>
+
+    <header class="max-w-xl mx-auto mb-8">
+        <h1 class="text-4xl font-extrabold text-indigo-700">🇫🇷 French Companion</h1>
+        <p id="user-id-display" class="text-sm text-gray-500 mt-1">Initializing...</p>
+        <p class="text-lg text-gray-600 mt-2">Interactive Flashcards for Beginners</p>
+    </header>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="max-w-xl mx-auto text-center mt-20 p-8 bg-white rounded-2xl shadow-xl">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+        <p id="loading-message" class="mt-4 text-indigo-700 font-semibold">Loading lessons and tracking progress...</p>
+    </div>
+
+    <!-- Main Content (Hidden until initialized) -->
+    <main id="main-content" class="max-w-xl mx-auto" style="display: none;">
+
+        <!-- Mode Selector -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 p-4 bg-indigo-50 rounded-2xl shadow-inner">
+            <h2 class="text-lg font-semibold text-indigo-700 mb-2 sm:mb-0">Learning Mode: <span id="current-mode-display" class="capitalize font-extrabold text-indigo-900">Practice</span></h2>
+            <button id="btn-speed-review" onclick="startSpeedReview()" class="px-4 py-2 w-full sm:w-auto text-sm font-bold bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition duration-150 shadow-lg">
+                🚀 Start Speed Review
+            </button>
+        </div>
+        
+        <!-- Lesson Navigation (Practice Mode Only) -->
+        <div id="lesson-nav-container">
+            <nav id="lesson-nav" class="flex flex-wrap gap-3 mb-6 p-4 bg-white rounded-2xl shadow-md"></nav>
+        </div>
+
+
+        <!-- Flashcard Area -->
+        <section class="bg-white rounded-3xl shadow-2xl overflow-hidden p-6 mb-6 lesson-card">
+            <div id="card-container" class="relative h-80">
+                <!-- Card content will be rendered here -->
+            </div>
+        </section>
+
+        <!-- Card Details and Navigation -->
+        <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
+            <div id="card-detail" class="mb-4 sm:mb-0">
+                <!-- Card details will be rendered here -->
+            </div>
+            <div class="flex space-x-3 w-full sm:w-auto">
+                <button id="btn-prev" onclick="prevCard()" class="flex-1">
+                    < Back
+                </button>
+                <button id="btn-next" onclick="nextCard()" class="flex-1">
+                    Next Card
+                </button>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-gray-400 text-xs">
+            Progress is automatically saved to your user ID using Google Firestore.
+        </footer>
+
+    </main>
+
+</body>
+</html>
