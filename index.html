@@ -91,10 +91,6 @@
         setLogLevel('Debug');
 
         // --- GLOBAL CONFIGS & STATE ---
-        const API_KEY = ""; // Kept empty as per instructions
-        const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
-        const TTS_VOICE = "Kore"; // A firm, clear voice
-        
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'french-learner-default';
@@ -117,10 +113,8 @@
         window.currentMode = 'practice'; // 'practice', 'review', or 'conversations'
         window.activeCardList = [];
         window.currentConversationIndex = 0;
-        let isAudioPlaying = false; 
 
-        // --- CONTENT DATA ---
-
+        // --- CONTENT DATA (UNCHANGED) ---
         const LESSONS = [
             { id: 1, title: "Greetings & Politeness", progressKey: "greetings", cards: [
                 { french: "Bonjour", english: "Hello / Good day", phonetic: "/bon-zhoor/" },
@@ -274,146 +268,39 @@
         window.LESSONS = LESSONS;
         window.CONVERSATIONS = CONVERSATIONS;
         
-        // --- AUDIO UTILITY FUNCTIONS (PCM to WAV Conversion) ---
+        // --- AUDIO UTILITY FUNCTION (Using Native Browser TTS) ---
 
-        function base64ToArrayBuffer(base64) {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+        window.handleListenClick = (text) => {
+            // Stop any currently speaking audio
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
             }
-            return bytes.buffer;
-        }
-
-        function pcmToWav(pcm16, sampleRate = 24000) {
-            const numChannels = 1;
-            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
-            const view = new DataView(buffer);
-
-            writeString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + pcm16.length * 2, true);
-            writeString(view, 8, 'WAVE');
             
-            writeString(view, 12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true);
-            view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2 * numChannels, true);
-            view.setUint16(32, numChannels * 2, true);
-            view.setUint16(34, 16, true);
-
-            writeString(view, 36, 'data');
-            view.setUint32(40, pcm16.length * 2, true);
-
-            let offset = 44;
-            for (let i = 0; i < pcm16.length; i++, offset += 2) {
-                view.setInt16(offset, pcm16[i], true);
-            }
-
-            return new Blob([view], { type: 'audio/wav' });
-        }
-
-        function writeString(view, offset, string) {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
-            }
-        }
-        
-        // --- GEMINI TTS API CALL & Retry Utility ---
-        const withRetry = async (fn, maxRetries = 3) => {
-            for (let i = 0; i < maxRetries; i++) {
-                try {
-                    return await fn();
-                } catch (error) {
-                    // Do not log retries as errors in the console
-                    if (i === maxRetries - 1) throw error;
-                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
+            // Check for native support
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // Set language to French for best native voice selection
+                utterance.lang = 'fr-FR'; 
+                
+                // Attempt to find a French voice for better pronunciation
+                const voices = window.speechSynthesis.getVoices();
+                const frenchVoice = voices.find(voice => voice.lang === 'fr-FR' || voice.lang.startsWith('fr'));
+                
+                if (frenchVoice) {
+                    utterance.voice = frenchVoice;
                 }
-            }
-        };
-
-        async function callTTSApi(text) {
-            const payload = {
-                contents: [{ parts: [{ text: text }] }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: { prebuiltVoiceConfig: { voiceName: TTS_VOICE } }
-                    }
-                },
-                model: "gemini-2.5-flash-preview-tts"
-            };
-
-            const response = await fetch(TTS_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error(`TTS API failed with status: ${response.status}`);
-            }
-            const result = await response.json();
-            const part = result?.candidates?.[0]?.content?.parts?.[0];
-            const audioData = part?.inlineData?.data;
-            const mimeType = part?.inlineData?.mimeType;
-
-            if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
                 
-                const pcmData = base64ToArrayBuffer(audioData);
-                const pcm16 = new Int16Array(pcmData);
+                // Speed control (optional)
+                utterance.rate = 1.0; 
                 
-                const wavBlob = pcmToWav(pcm16, sampleRate);
-                return URL.createObjectURL(wavBlob);
+                window.speechSynthesis.speak(utterance);
             } else {
-                throw new Error("Invalid or missing audio data in TTS response.");
-            }
-        }
-
-        window.handleListenClick = async (text, elementId = 'listen-button-main') => {
-            if (isAudioPlaying) return;
-            const button = document.getElementById(elementId);
-            if (!button) return;
-
-            const originalText = button.innerHTML;
-            
-            button.disabled = true;
-            button.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg> Loading...`;
-            isAudioPlaying = true;
-            
-            try {
-                let audioUrl;
-                await withRetry(async () => {
-                    audioUrl = await callTTSApi(text);
-                });
-
-                const audio = new Audio(audioUrl);
-                audio.play();
-                
-                audio.onended = () => {
-                    button.disabled = false;
-                    button.innerHTML = originalText;
-                    isAudioPlaying = false;
-                    URL.revokeObjectURL(audioUrl);
-                };
-            } catch (error) {
-                console.error("TTS Error:", error);
-                showNotification(`Could not generate audio. Status: ${error.message.includes('403') ? 'Forbidden (API permission issue)' : 'Error'}`, 'error');
-                button.disabled = false;
-                button.innerHTML = originalText;
-                isAudioPlaying = false;
+                showNotification("Browser does not support native Text-to-Speech.", 'error');
             }
         };
 
-        // --- VOICE RECORDING LOGIC ---
+        // --- VOICE RECORDING LOGIC (UNCHANGED) ---
 
         window.toggleRecording = async () => {
             const recordBtn = document.getElementById('record-btn');
@@ -475,7 +362,7 @@
             }
         };
 
-        // --- FIREBASE/FIRESTORE FUNCTIONS ---
+        // --- FIREBASE/FIRESTORE FUNCTIONS (UNCHANGED) ---
 
         const getProgressDocRef = () => {
             if (!userId) return null;
@@ -515,7 +402,8 @@
             };
 
             try {
-                await withRetry(() => setDoc(docRef, dataToSave, { merge: true }));
+                // Removed withRetry utility, using direct setDoc since Firestore is reliable
+                await setDoc(docRef, dataToSave, { merge: true });
             } catch (error) {
                 console.error("Failed to save progress:", error);
                 showNotification("Failed to save progress. Check console for details.", 'error');
@@ -567,7 +455,7 @@
             }
         };
 
-        // --- UI & APPLICATION LOGIC ---
+        // --- UI & APPLICATION LOGIC (UNCHANGED) ---
 
         const showNotification = (message, type = 'info') => {
             const notification = document.getElementById('notification-box');
@@ -753,7 +641,7 @@
                             <p class="text-2xl font-semibold mb-2 text-gray-500">French</p>
                             <h2 class="text-5xl font-extrabold">${card.french}</h2>
                             <p class="text-2xl font-semibold mb-6 phonetic">${card.phonetic}</p>
-                            <button id="listen-button-main" onclick="event.stopPropagation(); handleListenClick('${card.french.replace(/'/g, "\\'")}', 'listen-button-main')" 
+                            <button id="listen-button-main" onclick="event.stopPropagation(); handleListenClick('${card.french.replace(/'/g, "\\'")}')" 
                                 class="listen-btn mt-6 flex items-center justify-center mx-auto text-lg hover:shadow-lg">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-2 w-5 h-5 mr-2">
                                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -832,7 +720,7 @@
                         <p class="text-sm font-semibold text-indigo-700 mb-2">Question:</p>
                         <h3 class="text-3xl font-extrabold text-indigo-900 mb-2">${currentConv.question}</h3>
                         <p class="text-lg font-semibold phonetic">${currentConv.answers[0].phonetic.split('/').slice(0, 2).join('/').replace(',', '')}...</p>
-                        <button id="listen-button-q" onclick="handleListenClick('${currentConv.question.replace(/'/g, "\\'")}', 'listen-button-q')" 
+                        <button id="listen-button-q" onclick="handleListenClick('${currentConv.question.replace(/'/g, "\\'")}')" 
                             class="listen-btn mt-3 flex items-center justify-center text-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                             Listen Question
@@ -845,7 +733,7 @@
                     <div class="p-4 bg-white rounded-xl border border-gray-300 shadow-lg mb-4">
                         <p class="text-2xl font-medium text-gray-800">${currentConv.answers[0].text}</p>
                         <p class="text-sm font-semibold phonetic mb-3">${currentConv.answers[0].phonetic}</p>
-                        <button id="listen-button-a1" onclick="handleListenClick('${currentConv.answers[0].text.replace(/'/g, "\\'")}', 'listen-button-a1')" 
+                        <button id="listen-button-a1" onclick="handleListenClick('${currentConv.answers[0].text.replace(/'/g, "\\'")}')" 
                             class="listen-btn flex items-center justify-center text-sm px-3 py-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                             Listen Sample
@@ -856,7 +744,7 @@
                     <div class="p-4 bg-white rounded-xl border border-gray-300 shadow-lg">
                         <p class="text-2xl font-medium text-gray-800">${currentConv.answers[1].text}</p>
                         <p class="text-sm font-semibold phonetic mb-3">${currentConv.answers[1].phonetic}</p>
-                        <button id="listen-button-a2" onclick="handleListenClick('${currentConv.answers[1].text.replace(/'/g, "\\'")}', 'listen-button-a2')" 
+                        <button id="listen-button-a2" onclick="handleListenClick('${currentConv.answers[1].text.replace(/'/g, "\\'")}')" 
                             class="listen-btn flex items-center justify-center text-sm px-3 py-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                             Listen Sample
