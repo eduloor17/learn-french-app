@@ -200,7 +200,7 @@
                 { french: "Le rat", english: "Rat", phonetic: "/luh rah/" }, { french: "La chauve-souris", english: "Bat", phonetic: "/la shohv-soo-ree/" },
                 { french: "Le serpent", english: "Snake", phonetic: "/luh ser-pon/" }, { french: "La tortue", english: "Turtle", phonetic: "/la tor-too/" },
                 { french: "Le crocodile", english: "Crocodile", phonetic: "/luh kro-ko-deel/" }, { french: "Le lézard", english: "Lizard", phonetic: "/luh lay-zar/" },
-                { french: "La grenouille", english: "Frog", phonetic: "/la gruh-nooy/" }, { french: "Le papillon", english: "Butterfly", phonetic: "/luh pa-pee-yon/" },
+                { french: "La grenouille", english: "Frog", phonetic: "/luh gruh-nooy/" }, { french: "Le papillon", english: "Butterfly", phonetic: "/luh pa-pee-yon/" },
                 { french: "L'abeille (f)", english: "Bee", phonetic: "/la-bay/" }, { french: "La fourmi", english: "Ant", phonetic: "/la foor-mee/" },
                 { french: "Le moustique", english: "Mosquito", phonetic: "/luh moos-teek/" }, { french: "L'araignée (f)", english: "Spider", phonetic: "/la-re-nyay/" },
                 { french: "La mouche", english: "Fly", phonetic: "/la moosh/" }, { french: "Le coq", english: "Rooster", phonetic: "/luh kok/" },
@@ -327,6 +327,7 @@
                 try {
                     return await fn();
                 } catch (error) {
+                    // Do not log retries as errors in the console
                     if (i === maxRetries - 1) throw error;
                     const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
@@ -384,7 +385,7 @@
             button.disabled = true;
             button.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg> Loading...`;
             isAudioPlaying = true;
             
@@ -405,7 +406,7 @@
                 };
             } catch (error) {
                 console.error("TTS Error:", error);
-                showNotification("Could not generate audio. Please check console.", 'error');
+                showNotification(`Could not generate audio. Status: ${error.message.includes('403') ? 'Forbidden (API permission issue)' : 'Error'}`, 'error');
                 button.disabled = false;
                 button.innerHTML = originalText;
                 isAudioPlaying = false;
