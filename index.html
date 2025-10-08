@@ -1,188 +1,506 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>French Companion - Flashcards & Conversations</title>
+    <title>Expanded French Learning Hub</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Inter font -->
     <style>
-        /* Estilos básicos para la aplicación */
-        :root {
-            --color-practice: #4f46e5; /* Indigo-600 */
-            --color-practice-text: white;
-            --color-conversations: #10b981; /* Emerald-500/Green-600 */
-            --color-conversations-text: white;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
-            background-color: #f3f4f6; /* Gray-100 */
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f9;
         }
-        #notification-box {
-            position: fixed;
-            top: 1rem;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 1rem 1.5rem;
-            border-radius: 0.75rem;
-            color: white;
-            z-index: 1000;
-            min-width: 300px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        /* Flashcard Flip CSS */
-        .flip-container {
-            perspective: 1000px;
-            height: 100%;
+        .lesson-card {
+            transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out;
             cursor: pointer;
+            perspective: 1000px;
         }
-        .flip-container > div {
-            transition: transform 0.6s;
-            transform-style: preserve-3d;
-            position: relative;
+        .flip-container {
             width: 100%;
             height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flip-container.flipped {
+            transform: rotateY(180deg);
         }
         .front, .back {
             position: absolute;
             width: 100%;
             height: 100%;
+            -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
+            border-radius: 1.5rem; /* Slightly larger radius */
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 1.5rem;
-            padding: 2rem;
-            box-sizing: border-box;
+            padding: 1.5rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         .front {
-            background-color: white;
-            z-index: 2;
+            background-color: #ffffff;
+            color: #1e40af; /* Blue */
         }
         .back {
-            background-color: #4f46e5; /* Indigo-600 */
+            background-color: #1e40af; /* Blue */
+            color: #ffffff;
+            transform: rotateY(180deg);
+        }
+        .listen-btn, .action-btn {
+            background-color: #f97316; /* Orange */
             color: white;
-            transform: rotateY(180deg);
-        }
-        .flipped > div {
-            transform: rotateY(180deg);
-        }
-        .flipped .back {
-            z-index: 3;
-        }
-        /* Common Button Styles */
-        .listen-btn {
-            background-color: #f0fdf4; /* Green-50 */
-            color: #10b981; /* Green-600 */
             padding: 0.5rem 1rem;
-            border-radius: 9999px; /* Full rounded */
-            font-weight: 600;
-            border: 1px solid #d1fae5;
-            transition: all 0.15s;
+            border-radius: 9999px;
+            font-weight: bold;
+            transition: background-color 0.15s, box-shadow 0.15s, transform 0.15s;
+            box-shadow: 0 4px #c2410c;
         }
-        .listen-btn:hover {
-            background-color: #d1fae5; /* Green-100 */
+        .listen-btn:hover, .action-btn:hover {
+            background-color: #ea580c;
         }
-        .action-btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            font-weight: 600;
-            color: white;
-            transition: all 0.15s;
-            box-shadow: 0 4px #4f46e5; /* Base Indigo-600 shadow */
-            background-color: #4f46e5;
-            cursor: pointer;
+        .listen-btn:active, .action-btn:active {
+            box-shadow: none;
+            transform: translateY(4px);
         }
-        .action-btn:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 5px #4338ca;
+        .record-btn-active {
+            background-color: #ef4444; /* Red */
+            box-shadow: 0 4px #b91c1c;
+            animation: pulse 1s infinite;
         }
-        .action-btn:active:not(:disabled) {
-            transform: translateY(2px);
-            box-shadow: 0 2px #4338ca;
+        .record-btn-active:hover {
+            background-color: #dc2626;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .phonetic {
+            color: #f97316; /* Orange 500 */
         }
     </style>
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
-    <script>
-        // --- DATA (PLACEHOLDERS) ---
-        // DEBES definir tus constantes reales LESSONS, CARDS, CONVERSATIONS y la función initFirebase
+        setLogLevel('Debug');
+
+        // --- GLOBAL CONFIGS & STATE ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'french-learner-default';
+
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        // --- VOICE RECORDING STATE ---
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordedAudioBlob = null;
+        let isRecording = false;
+
+        // --- APPLICATION STATE ---
+        window.currentProgress = {};
+        window.currentLessonIndex = 0;
+        window.currentCardIndex = 0;
+        window.isFlipped = false;
+        window.currentMode = 'practice'; // 'practice', 'review', or 'conversations'
+        window.activeCardList = [];
+        window.currentConversationIndex = 0;
+
+        // --- CONTENT DATA (UNCHANGED) ---
         const LESSONS = [
-            // Ejemplo de una lección
-            { title: "Verbs: Être & Avoir", progressKey: "lesson1", cards: [
-                { french: "Tu es (Être)", english: "You are (To be)", phonetic: "/ty ɛ/", lessonTitle: "Être & Avoir" },
+            { id: 1, title: "Greetings & Politeness", progressKey: "greetings", cards: [
+                { french: "Bonjour", english: "Hello / Good day", phonetic: "/bon-zhoor/" },
+                { french: "Bonsoir", english: "Good evening", phonetic: "/bon-swar/" },
+                { french: "Salut", english: "Hi / Bye (informal)", phonetic: "/sah-loo/" },
+                { french: "Au revoir", english: "Goodbye", phonetic: "/oh-ruh-vwar/" },
+                { french: "À bientôt", english: "See you soon", phonetic: "/ah byan-toh/" },
+                { french: "Comment ça va ?", english: "How are you? (informal)", phonetic: "/ko-mon sa va/" },
+                { french: "Ça va bien, merci.", english: "I am fine, thank you.", phonetic: "/sa va byan mer-see/" },
+                { french: "Et vous ?", english: "And you? (formal)", phonetic: "/ay voo/" },
+                { french: "S'il vous plaît", english: "Please (formal)", phonetic: "/seel voo play/" },
+                { french: "Merci beaucoup", english: "Thank you very much", phonetic: "/mer-see bo-koo/" },
+                { french: "De rien", english: "You're welcome", phonetic: "/duh ryen/" },
+                { french: "Je comprends", english: "I understand", phonetic: "/zhuh kom-pran/" },
+                { french: "Je ne comprends pas", english: "I do not understand", phonetic: "/zhuh nuh kom-pran pah/" },
+                { french: "Excusez-moi", english: "Excuse me / I'm sorry", phonetic: "/ex-koo-zay mwah/" },
             ]},
-            { title: "Verbs: Aller, Faire...", progressKey: "lesson2", cards: [
-                { french: "Nous allons (Aller)", english: "We go (To go)", phonetic: "/nu z‿a.lɔ̃/", lessonTitle: "Aller, Faire..." },
+            { id: 2, title: "Verbs: Être & Avoir", progressKey: "etre_avoir", cards: [
+                { french: "Je suis", text: "(Être)", english: "I am", phonetic: "/zhuh swee/" }, 
+                { french: "Tu es", text: "(Être)", english: "You are (informal)", phonetic: "/too eh/" },
+                { french: "Il/Elle est", text: "(Être)", english: "He/She is", phonetic: "/eel/el eh/" },
+                { french: "Nous sommes", text: "(Être)", english: "We are", phonetic: "/noo sum/" },
+                { french: "Vous êtes", text: "(Être)", english: "You are (formal/plural)", phonetic: "/voo zet/" }, 
+                { french: "Ils/Elles sont", text: "(Être)", english: "They are", phonetic: "/eel/el son/" },
+                { french: "J'ai", text: "(Avoir)", english: "I have", phonetic: "/zheh/" },
+                { french: "Tu as", text: "(Avoir)", english: "You have (informal)", phonetic: "/too ah/" },
+                { french: "Il/Elle a", text: "(Avoir)", english: "He/She has", phonetic: "/eel/el ah/" },
+                { french: "Nous avons", text: "(Avoir)", english: "We have", phonetic: "/noo za-von/" },
+                { french: "Vous avez", text: "(Avoir)", english: "You have (formal/plural)", phonetic: "/voo za-vay/" },
+                { french: "Ils/Elles ont", text: "(Avoir)", english: "They have", phonetic: "/eel/el zon/" },
+                { french: "J'ai soif", english: "I am thirsty (I have thirst)", phonetic: "/zheh swaf/" },
+                { french: "Nous avons une idée", english: "We have an idea", phonetic: "/noo za-von oon ee-day/" },
+            ]},
+            { id: 3, title: "Verbs: Aller, Faire, Vouloir", progressKey: "aller_faire_vouloir", cards: [
+                { french: "Je vais", text: "(Aller)", english: "I go / I am going", phonetic: "/zhuh vay/" }, 
+                { french: "Tu vas", text: "(Aller)", english: "You go (informal)", phonetic: "/too vah/" },
+                { french: "Nous allons", text: "(Aller)", english: "We go", phonetic: "/noo za-lon/" },
+                { french: "Vous allez", text: "(Aller)", english: "You go (formal/plural)", phonetic: "/voo za-lay/" },
+                { french: "Je fais", text: "(Faire)", english: "I do / I make", phonetic: "/zhuh fay/" }, 
+                { french: "Tu fais", text: "(Faire)", english: "You do (informal)", phonetic: "/too fay/" },
+                { french: "Nous faisons", text: "(Faire)", english: "We do / We make", phonetic: "/noo fuh-zon/" },
+                { french: "Vous faites", text: "(Faire)", english: "You do (formal/plural)", phonetic: "/voo fet/" },
+                { french: "Je veux", text: "(Vouloir)", english: "I want", phonetic: "/zhuh vuh/" },
+                { french: "Tu veux", text: "(Vouloir)", english: "You want (informal)", phonetic: "/too vuh/" },
+                { french: "Nous voulons", text: "(Vouloir)", english: "We want", phonetic: "/noo voo-lon/" },
+                { french: "Vous voulez", text: "(Vouloir)", english: "You want (formal/plural)", phonetic: "/voo voo-lay/" },
+                { french: "Je veux faire ça", english: "I want to do this", phonetic: "/zhuh vuh fer sah/" },
+                { french: "Où allez-vous ?", english: "Where are you going?", phonetic: "/oo a-lay voo/" },
+            ]},
+            { id: 4, title: "Numbers (0-100)", progressKey: "numbers_0_100", cards: [
+                { french: "Zéro", english: "Zero", phonetic: "/ze-roh/" }, { french: "Un", english: "One", phonetic: "/uh/" }, { french: "Deux", english: "Two", phonetic: "/duh/" },
+                { french: "Trois", english: "Three", phonetic: "/trwah/" }, { french: "Dix", english: "Ten", phonetic: "/dees/" }, { french: "Vingt", english: "Twenty", phonetic: "/vant/" },
+                { french: "Vingt-et-un", english: "Twenty-one", phonetic: "/vant-ay-uh/" }, { french: "Trente", english: "Thirty", phonetic: "/tront/" },
+                { french: "Quarante", english: "Forty", phonetic: "/ka-ront/" }, { french: "Cinquante", english: "Fifty", phonetic: "/sank-ont/" },
+                { french: "Soixante", english: "Sixty", phonetic: "/swa-sant/" }, { french: "Soixante-dix", english: "Seventy (60+10)", phonetic: "/swa-sant-dees/" },
+                { french: "Quatre-vingts", english: "Eighty (4x20)", phonetic: "/katr-vant/" }, { french: "Quatre-vingt-dix", english: "Ninety (4x20+10)", phonetic: "/katr-vant-dees/" },
+                { french: "Cent", english: "One Hundred", phonetic: "/sant/" }, 
+                { french: "Quelle est l'heure ?", english: "What time is it?", phonetic: "/kel eh lur/" }, 
+                { french: "Il est huit heures", english: "It is eight o'clock", phonetic: "/eel eh weet ur/" },
+                { french: "J'ai soixante-douze ans", english: "I am seventy-two years old", phonetic: "/zheh swa-sant-dooz ahn/" }, 
+                { french: "Le prix est quatre-vingt-neuf", english: "The price is eighty-nine", phonetic: "/luh pree eh katr-vant-nuf/" },
+            ]},
+            { id: 5, title: "60 Common Animals", progressKey: "animals_60", cards: [
+                { french: "Le chien", english: "Dog", phonetic: "/luh shyen/" }, { french: "Le chat", english: "Cat", phonetic: "/luh shah/" },
+                { french: "Le cheval", english: "Horse", phonetic: "/luh shuh-val/" }, { french: "La vache", english: "Cow", phonetic: "/la vash/" },
+                { french: "Le cochon", english: "Pig", phonetic: "/luh ko-shon/" }, { french: "La chèvre", english: "Goat", phonetic: "/la shevr/" },
+                { french: "Le mouton", english: "Sheep", phonetic: "/luh moo-ton/" }, { french: "Le lapin", english: "Rabbit", phonetic: "/luh la-pan/" },
+                { french: "Le canard", english: "Duck", phonetic: "/luh ka-nar/" }, { french: "La poule", english: "Chicken (hen)", phonetic: "/la pool/" },
+                { french: "Le dindon", english: "Turkey", phonetic: "/luh dan-don/" }, { french: "L'oie (f)", english: "Goose", phonetic: "/lwa/" },
+                { french: "Le poisson", english: "Fish", phonetic: "/luh pwa-son/" }, { french: "L'oiseau (m)", english: "Bird", phonetic: "/lwa-zoh/" },
+                { french: "Le lion", english: "Lion", phonetic: "/luh lee-on/" }, { french: "Le tigre", english: "Tiger", phonetic: "/luh tee-gr/" },
+                { french: "L'éléphant (m)", english: "Elephant", phonetic: "/lay-lay-fan/" }, { french: "La girafe", english: "Giraffe", phonetic: "/la zhee-raf/" },
+                { french: "Le singe", english: "Monkey", phonetic: "/luh sanj/" }, { french: "L'ours (m)", english: "Bear", phonetic: "/loors/" },
+                { french: "Le loup", english: "Wolf", phonetic: "/luh loo/" }, { french: "Le renard", english: "Fox", phonetic: "/luh ruh-nar/" },
+                { french: "Le cerf", english: "Deer", phonetic: "/luh serf/" }, { french: "L'écureuil (m)", english: "Squirrel", phonetic: "/lay-koo-roy/" },
+                { french: "Le hérisson", english: "Hedgehog", phonetic: "/luh ay-ree-son/" }, { french: "La souris", english: "Mouse", phonetic: "/la soo-ree/" },
+                { french: "Le rat", english: "Rat", phonetic: "/luh rah/" }, { french: "La chauve-souris", english: "Bat", phonetic: "/la shohv-soo-ree/" },
+                { french: "Le serpent", english: "Snake", phonetic: "/luh ser-pon/" }, { french: "La tortue", english: "Turtle", phonetic: "/la tor-too/" },
+                { french: "Le crocodile", english: "Crocodile", phonetic: "/luh kro-ko-deel/" }, { french: "Le lézard", english: "Lizard", phonetic: "/luh lay-zar/" },
+                { french: "La grenouille", english: "Frog", phonetic: "/luh gruh-nooy/" }, { french: "Le papillon", english: "Butterfly", phonetic: "/luh pa-pee-yon/" },
+                { french: "L'abeille (f)", english: "Bee", phonetic: "/la-bay/" }, { french: "La fourmi", english: "Ant", phonetic: "/la foor-mee/" },
+                { french: "Le moustique", english: "Mosquito", phonetic: "/luh moos-teek/" }, { french: "L'araignée (f)", english: "Spider", phonetic: "/la-re-nyay/" },
+                { french: "La mouche", english: "Fly", phonetic: "/la moosh/" }, { french: "Le coq", english: "Rooster", phonetic: "/luh kok/" },
+                { french: "Le hibou", english: "Owl", phonetic: "/luh ee-boo/" }, { french: "Le pigeon", english: "Pigeon", phonetic: "/luh pee-zhohn/" },
+                { french: "L'aigle (m)", english: "Eagle", phonetic: "/lay-gl/" }, { french: "Le cygne", english: "Swan", phonetic: "/luh seen/" },
+                { french: "Le dauphin", english: "Dolphin", phonetic: "/luh doh-fan/" }, { french: "La baleine", english: "Whale", phonetic: "/la ba-len/" },
+                { french: "Le requin", english: "Shark", phonetic: "/luh ruh-kan/" }, { french: "Le crabe", english: "Crab", phonetic: "/luh krab/" },
+                { french: "L'escargot (m)", english: "Snail", phonetic: "/les-kar-goh/" }, { french: "La crevette", english: "Shrimp", phonetic: "/la kruh-vet/" },
+                { french: "La méduse", english: "Jellyfish", phonetic: "/la may-dooz/" }, { french: "Le phoque", english: "Seal", phonetic: "/luh fok/" },
+                { french: "Le pingouin", english: "Penguin", phonetic: "/luh pan-gwan/" }, { french: "Le chameau", english: "Camel", phonetic: "/luh sha-moh/" },
+                { french: "Le zèbre", english: "Zebra", phonetic: "/luh zebr/" }, { french: "Le rhinocéros", english: "Rhinoceros", phonetic: "/luh ree-no-say-ros/" },
+                { french: "L'hippopotame (m)", english: "Hippopotamus", phonetic: "/lee-po-po-tam/" }, { french: "La panthère", english: "Panther", phonetic: "/la pan-ter/" },
+                { french: "Le flamant rose", english: "Flamingo", phonetic: "/luh fla-man rohz/" }, { french: "Le raton laveur", english: "Raccoon", phonetic: "/luh ra-ton la-vur/" },
+                { french: "Le castor", english: "Beaver", phonetic: "/luh kas-tor/" }, { french: "La marmotte", english: "Groundhog/Marmot", phonetic: "/la mar-mot/" },
+                { french: "Le dromadaire", english: "Dromedary (camel)", phonetic: "/luh dro-ma-der/" }, { french: "Le kangourou", english: "Kangaroo", phonetic: "/luh kahn-goo-roo/" },
+            ]},
+            { id: 6, title: "Colors & Adjectives", progressKey: "colors_adj", cards: [
+                { french: "Rouge", english: "Red", phonetic: "/roozh/" }, { french: "Bleu / Bleue", english: "Blue (m/f)", phonetic: "/bluh/" }, 
+                { french: "Vert / Verte", english: "Green (m/f)", phonetic: "/ver / vert/" }, { french: "Jaune", english: "Yellow (m/f same)", phonetic: "/zhon/" }, 
+                { french: "Noir / Noire", english: "Black (m/f)", phonetic: "/nwar / nwar/" }, { french: "Blanc / Blanche", english: "White (m/f)", phonetic: "/blan / blansh/" },
+                { french: "Grand / Grande", english: "Tall / Big (m/f)", phonetic: "/grahn / grahnd/" }, { french: "Petit / Petite", english: "Small / Short (m/f)", phonetic: "/puh-tee / puh-teet/" },
+                { french: "Bon / Bonne", english: "Good (m/f)", phonetic: "/bon / bun/" }, { french: "Mauvais / Mauvaise", english: "Bad (m/f)", phonetic: "/mo-veh / mo-vez/" },
+                { french: "Beau / Belle", english: "Beautiful (m/f)", phonetic: "/boh / bel/" }, { french: "Facile", english: "Easy (m/f same)", phonetic: "/fah-seel/" }, 
+                { french: "Difficile", english: "Difficult (m/f same)", phonetic: "/dee-fee-seel/" }, { french: "Rapide", english: "Fast / Quick (m/f same)", phonetic: "/ra-peed/" },
             ]},
         ];
 
         const CONVERSATIONS = [
-            { 
-                topic: "Ordering Coffee", 
-                question: "Que voulez-vous boire ?", 
-                answers: [
-                    { text: "Je voudrais un café, s'il vous plaît.", phonetic: "/ʒə vu.dʁe œ̃ ka.fe sil vu plɛ/" },
-                    { text: "Un thé vert, merci.", phonetic: "/œ̃ te vɛʁ mɛʁ.si/" }
-                ]
+            { topic: "At the Café", question: "Qu'est-ce que vous prendrez ?", 
+              answers: [{ text: "Je voudrais un café, s'il vous plaît.", phonetic: "/zhuh voo-dray uh ka-fay, seel voo play/" },
+                        { text: "Je vais prendre un thé vert.", phonetic: "/zhuh vay pron-dr uh tay ver/" }]
+            },
+            { topic: "Asking Directions", question: "Où se trouve la Tour Eiffel ?", 
+              answers: [{ text: "C'est tout droit, après le pont.", phonetic: "/seh too drwah, ah-pray luh pon/" },
+                        { text: "Je suis désolé, je ne sais pas.", phonetic: "/zhuh swee day-zo-lay, zhuh nuh say pah/" }]
+            },
+            { topic: "Meeting Someone", question: "Comment vous appelez-vous ?", 
+              answers: [{ text: "Je m'appelle Thomas, et vous ?", phonetic: "/zhuh ma-pel Toh-mah, ay voo/" },
+                        { text: "Je suis Marie. Enchantée.", phonetic: "/zhuh swee Mah-ree. Ahn-shahn-tay/" }]
+            },
+            { topic: "Shopping", question: "Combien coûte cette écharpe ?", 
+              answers: [{ text: "Elle coûte vingt-cinq euros.", phonetic: "/el koot van-sank eu-roh/" },
+                        { text: "C'est trop cher, merci.", phonetic: "/seh tro sher, mer-see/" }]
+            },
+            { topic: "Ordering Food", question: "Voulez-vous un dessert ?", 
+              answers: [{ text: "Oui, je prendrai une tarte au chocolat.", phonetic: "/wee, zhuh pron-dray oon tart oh sho-ko-lah/" },
+                        { text: "Non merci, juste l'addition.", phonetic: "/non mer-see, joost la-dee-see-on/" }]
+            },
+            { topic: "Talking About Hobbies", question: "Qu'est-ce que vous aimez faire ?", 
+              answers: [{ text: "J'aime lire et voyager.", phonetic: "/zhem leer ay vwa-ya-zhay/" },
+                        { text: "Je fais du sport tous les jours.", phonetic: "/zhuh fay doo spor too lay zhoor/" }]
+            },
+            { topic: "Checking in (Hotel)", question: "Avez-vous une réservation ?", 
+              answers: [{ text: "Oui, au nom de Dupont.", phonetic: "/wee, oh nom duh Doo-pon/" },
+                        { text: "Non, avez-vous une chambre libre ?", phonetic: "/non, a-vay voo oon shambr leebr/" }]
+            },
+            { topic: "Weather", question: "Quel temps fait-il aujourd'hui ?", 
+              answers: [{ text: "Il fait beau et chaud.", phonetic: "/eel fay boh ay shoh/" },
+                        { text: "Il pleut, c'est dommage.", phonetic: "/eel pluh, seh doh-mazh/" }]
+            },
+            { topic: "Making Plans", question: "On se voit à quelle heure ?", 
+              answers: [{ text: "Rendez-vous à dix-huit heures.", phonetic: "/ron-day voo ah deez-weet ur/" },
+                        { text: "Je suis occupé ce soir.", phonetic: "/zhuh sweez o-koo-pay su swar/" }]
+            },
+            { topic: "At the Bakery", question: "Vous désirez autre chose ?", 
+              answers: [{ text: "Non, c'est tout pour moi, merci.", phonetic: "/non, seh too poor mwah, mer-see/" },
+                        { text: "Oui, deux croissants s'il vous plaît.", phonetic: "/wee, duh krwa-son seel voo play/" }]
             },
         ];
+
+        window.LESSONS = LESSONS;
+        window.CONVERSATIONS = CONVERSATIONS;
         
-        // --- FIREBASE AND PROGRESS MANAGEMENT (PLACEHOLDERS) ---
-        window.currentProgress = {}; 
-        window.currentProgress['lesson1'] = true;
-        window.currentProgress['lesson2'] = false;
-        
-        function initFirebase() {
-            console.log("Firebase initialized. Progress loaded.");
-            document.getElementById('user-id-display').textContent = 'User: Guest (Progress Simulation)';
-            window.selectLesson(0);
-        }
+        // --- AUDIO UTILITY FUNCTION (Using Native Browser TTS) ---
 
-        function saveProgress() {
-            console.log("Progress saved to Firebase.");
-        }
-        // ------------------------------------------------------------------
-
-
-        // --- GLOBAL STATE ---
-        window.currentMode = 'practice'; // 'practice', 'review', or 'conversations'
-        window.currentLessonIndex = 0;
-        window.currentCardIndex = 0;
-        window.currentConversationIndex = 0;
-        window.isFlipped = false;
-        window.activeCardList = []; // The list of cards currently being viewed
-
-        // --- UTILITIES ---
-        window.showNotification = (message, type = 'success') => {
-            const box = document.getElementById('notification-box');
-            box.textContent = message;
-            box.style.opacity = 1;
-
-            let bgColor;
-            switch (type) {
-                case 'error': bgColor = '#ef4444'; break; // Red-500
-                case 'info': bgColor = '#3b82f6'; break;  // Blue-500
-                case 'warning': bgColor = '#f59e0b'; break; // Amber-500
-                default: bgColor = '#10b981'; // Green-500 (success)
+        window.handleListenClick = (text) => {
+            // Stop any currently speaking audio
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
             }
-            box.style.backgroundColor = bgColor;
+            
+            // Check for native support
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // Set language to French for best native voice selection
+                utterance.lang = 'fr-FR'; 
+                
+                // Attempt to find a French voice for better pronunciation
+                const voices = window.speechSynthesis.getVoices();
+                const frenchVoice = voices.find(voice => voice.lang === 'fr-FR' || voice.lang.startsWith('fr'));
+                
+                if (frenchVoice) {
+                    utterance.voice = frenchVoice;
+                }
+                
+                // Speed control (optional)
+                utterance.rate = 1.0; 
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                showNotification("Browser does not support native Text-to-Speech.", 'error');
+            }
+        };
 
+        // --- VOICE RECORDING LOGIC (UNCHANGED) ---
+
+        window.toggleRecording = async () => {
+            const recordBtn = document.getElementById('record-btn');
+            const playBtn = document.getElementById('play-btn');
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showNotification("Microphone access not supported in this browser/environment.", 'error');
+                return;
+            }
+
+            if (!isRecording) {
+                // Start recording
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    recordedAudioBlob = null;
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        // Cleanup stream tracks
+                        stream.getTracks().forEach(track => track.stop());
+                        recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg> Start Recording`;
+                        recordBtn.classList.remove('record-btn-active');
+                        playBtn.disabled = false; // Enable playback
+                        isRecording = false;
+                        showNotification("Recording finished. Click 'Play My Recording' to listen.", 'info');
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    playBtn.disabled = true; // Disable playback while recording
+                    recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="5"/></svg> Stop Recording`;
+                    recordBtn.classList.add('record-btn-active');
+                    showNotification("Recording started...", 'info');
+
+                } catch (err) {
+                    console.error('Recording failed:', err);
+                    showNotification(`Error accessing microphone: ${err.name}.`, 'error');
+                }
+            } else {
+                // Stop recording
+                mediaRecorder.stop();
+            }
+        };
+
+        window.playRecording = () => {
+            if (recordedAudioBlob) {
+                const audioUrl = URL.createObjectURL(recordedAudioBlob);
+                const audio = new Audio(audioUrl);
+                audio.play();
+                audio.onended = () => { URL.revokeObjectURL(audioUrl); };
+            } else {
+                showNotification("No recording available. Please record your voice first.", 'info');
+            }
+        };
+
+        // --- FIREBASE/FIRESTORE FUNCTIONS (UNCHANGED) ---
+
+        const getProgressDocRef = () => {
+            if (!userId) return null;
+            const progressCollectionPath = `/artifacts/${appId}/users/${userId}/french_progress`;
+            return doc(db, progressCollectionPath, "data");
+        };
+
+        const loadProgress = () => {
+            const docRef = getProgressDocRef();
+            if (!docRef || !isAuthReady) return;
+
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    window.currentProgress = docSnap.data().progress || {};
+                    window.activeCardList = LESSONS[window.currentLessonIndex].cards; 
+                    renderApp(); 
+                } else {
+                    window.currentProgress = {};
+                    window.activeCardList = LESSONS[window.currentLessonIndex].cards;
+                    renderApp(); 
+                }
+            }, (error) => {
+                console.error("Error listening to progress:", error);
+            });
+        };
+
+        const saveProgress = async () => {
+            const docRef = getProgressDocRef();
+            if (!docRef || !isAuthReady) {
+                console.warn("Cannot save progress: Firestore not ready or unauthorized.");
+                return;
+            }
+
+            const dataToSave = {
+                progress: window.currentProgress,
+                lastUpdated: new Date().toISOString()
+            };
+
+            try {
+                // Removed withRetry utility, using direct setDoc since Firestore is reliable
+                await setDoc(docRef, dataToSave, { merge: true });
+            } catch (error) {
+                console.error("Failed to save progress:", error);
+                showNotification("Failed to save progress. Check console for details.", 'error');
+            }
+        };
+
+        const initFirebase = async () => {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    isAuthReady = true;
+                    userId = crypto.randomUUID(); 
+                    window.activeCardList = LESSONS[0].cards;
+                    renderApp();
+                    return;
+                }
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                const authPromise = new Promise(resolve => {
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) { userId = user.uid; } 
+                        else {
+                            try {
+                                if (initialAuthToken) {
+                                    const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                                    userId = userCredential.user.uid;
+                                } else {
+                                    const userCredential = await signInAnonymously(auth);
+                                    userId = userCredential.user.uid;
+                                }
+                            } catch (error) {
+                                console.error("Authentication failed:", error);
+                                userId = crypto.randomUUID(); 
+                            }
+                        }
+                        isAuthReady = true;
+                        resolve();
+                    });
+                });
+
+                await authPromise;
+                document.getElementById('user-id-display').textContent = `User ID: ${userId.substring(0, 8)}...`;
+                loadProgress();
+            } catch (error) {
+                console.error("Failed to initialize Firebase:", error);
+                document.getElementById('loading-message').textContent = "Error initializing Firebase. Check console.";
+            }
+        };
+
+        // --- UI & APPLICATION LOGIC (UNCHANGED) ---
+
+        const showNotification = (message, type = 'info') => {
+            const notification = document.getElementById('notification-box');
+            notification.textContent = message;
+            notification.className = `p-3 rounded-xl text-sm transition-all duration-300 fixed top-4 right-4 z-50 shadow-xl 
+            ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-100 text-green-800'}`;
+            notification.style.opacity = 1;
             setTimeout(() => {
-                box.style.opacity = 0;
+                notification.style.opacity = 0;
             }, 3000);
         };
 
-        // --- NAVIGATION AND MODE FUNCTIONS ---
-
-        window.changeView = (mode) => {
-            window.currentMode = mode;
+        window.changeView = (view) => {
+            window.currentMode = view;
             window.isFlipped = false;
-            if (mode === 'practice') {
-                window.selectLesson(window.currentLessonIndex);
-            } else if (mode === 'conversations') {
+            if (view === 'conversations') {
                 window.currentConversationIndex = 0;
-                renderApp();
+            } else if (view === 'practice') {
+                window.activeCardList = LESSONS[window.currentLessonIndex].cards;
             }
+            renderApp();
+        };
+
+        // --- FLASHCARD MODE FUNCTIONS ---
+
+        window.startSpeedReview = () => {
+            window.currentMode = 'review';
+            let reviewCards = [];
+            LESSONS.forEach(lesson => {
+                const multiplier = window.currentProgress[lesson.progressKey] ? 1 : 3; 
+                for (let i = 0; i < multiplier; i++) {
+                    lesson.cards.forEach(card => {
+                        reviewCards.push({...card, lessonTitle: lesson.title});
+                    });
+                }
+            });
+            for (let i = reviewCards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [reviewCards[i], reviewCards[j]] = [reviewCards[j], reviewCards[i]];
+            }
+            window.activeCardList = reviewCards;
+            window.currentCardIndex = 0;
+            window.isFlipped = false;
+            showNotification(`Starting Speed Review Mode with ${reviewCards.length} cards!`);
+            renderApp();
         };
 
         window.selectLesson = (index) => {
@@ -194,45 +512,13 @@
             renderApp();
         };
 
-        window.startSpeedReview = () => {
-            window.currentMode = 'review';
-            window.currentCardIndex = 0;
-            window.isFlipped = false;
-
-            // Collect ALL cards from ALL completed lessons
-            let reviewList = [];
-            LESSONS.forEach(lesson => {
-                if (window.currentProgress[lesson.progressKey]) {
-                    // Add lesson context to the card for review mode
-                    const cardsWithContext = lesson.cards.map(card => ({
-                        ...card, 
-                        lessonTitle: lesson.title
-                    }));
-                    reviewList = reviewList.concat(cardsWithContext);
-                }
-            });
-
-            if (reviewList.length === 0) {
-                showNotification('Complete al menos una lección para comenzar la Revisión Rápida.', 'warning');
-                window.currentMode = 'practice';
-                renderApp();
-                return;
-            }
-
-            // Shuffle the cards (simple Fisher-Yates shuffle)
-            for (let i = reviewList.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [reviewList[i], reviewList[j]] = [reviewList[j], reviewList[i]];
-            }
-
-            window.activeCardList = reviewList;
-            showNotification(`Starting Speed Review with ${reviewList.length} cards!`);
-            renderApp();
-        };
-
         window.flipCard = () => {
+            if (window.currentMode === 'conversations') return; // Do not flip in conversation mode
             window.isFlipped = !window.isFlipped;
-            renderApp();
+            const flipContainer = document.getElementById('flip-container');
+            if (flipContainer) {
+                flipContainer.classList.toggle('flipped', window.isFlipped);
+            }
         };
 
         window.nextCard = () => {
@@ -291,19 +577,6 @@
                 window.currentConversationIndex--;
                 renderApp();
             }
-        };
-
-        // Placeholder for handleListenClick, toggleRecording, playRecording
-        // These were not in the original version, but are referenced in the HTML/JS
-        window.handleListenClick = (text) => {
-             console.log("Listening function not fully implemented yet for:", text);
-             showNotification("Listening function is currently a placeholder.", 'info');
-        };
-        window.toggleRecording = () => {
-             showNotification("Recording function is a placeholder.", 'warning');
-        };
-        window.playRecording = () => {
-             showNotification("Playback function is a placeholder.", 'warning');
         };
 
         // --- MAIN RENDER FUNCTION ---
@@ -442,6 +715,7 @@
                         <p class="text-sm text-gray-500">Scenario ${window.currentConversationIndex + 1} of ${totalConvs}</p>
                     </div>
 
+                    <!-- Question Block -->
                     <div class="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-200 shadow-inner">
                         <p class="text-sm font-semibold text-indigo-700 mb-2">Question:</p>
                         <h3 class="text-3xl font-extrabold text-indigo-900 mb-2">${currentConv.question}</h3>
@@ -455,6 +729,7 @@
 
                     <h4 class="text-xl font-bold text-gray-700 mt-8 mb-4">Choose and Practice Your Answer:</h4>
                     
+                    <!-- Answer Block 1 -->
                     <div class="p-4 bg-white rounded-xl border border-gray-300 shadow-lg mb-4">
                         <p class="text-2xl font-medium text-gray-800">${currentConv.answers[0].text}</p>
                         <p class="text-sm font-semibold phonetic mb-3">${currentConv.answers[0].phonetic}</p>
@@ -465,6 +740,7 @@
                         </button>
                     </div>
 
+                    <!-- Answer Block 2 -->
                     <div class="p-4 bg-white rounded-xl border border-gray-300 shadow-lg">
                         <p class="text-2xl font-medium text-gray-800">${currentConv.answers[1].text}</p>
                         <p class="text-sm font-semibold phonetic mb-3">${currentConv.answers[1].phonetic}</p>
@@ -476,6 +752,7 @@
                     </div>
                 </div>
 
+                <!-- Recording Controls -->
                 <div class="flex justify-center space-x-4 p-4 bg-indigo-100 rounded-2xl shadow-inner">
                     <button id="record-btn" onclick="toggleRecording()" class="action-btn flex items-center text-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
@@ -487,6 +764,7 @@
                     </button>
                 </div>
 
+                <!-- Navigation for Conversations -->
                 <div class="flex justify-between items-center mt-6">
                     <button onclick="prevConversation()" class="p-3 rounded-xl font-semibold transition duration-150 bg-gray-300 text-gray-700 hover:bg-gray-400 ${window.currentConversationIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${window.currentConversationIndex === 0 ? 'disabled' : ''}>
                         < Previous Topic
@@ -524,13 +802,16 @@
         </div>
     </header>
 
+    <!-- Loading State -->
     <div id="loading-state" class="max-w-xl mx-auto text-center mt-20 p-8 bg-white rounded-2xl shadow-xl">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
         <p id="loading-message" class="mt-4 text-indigo-700 font-semibold">Loading lessons and tracking progress...</p>
     </div>
 
+    <!-- Main Content (Hidden until initialized) -->
     <main id="main-content" class="max-w-xl mx-auto" style="display: none;">
 
+        <!-- Mode Selector / Status Bar -->
         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 p-4 bg-indigo-50 rounded-2xl shadow-inner">
             <h2 class="text-lg font-semibold text-indigo-700 mb-2 sm:mb-0">Current Mode: <span id="current-mode-display" class="capitalize font-extrabold text-indigo-900">Practice</span></h2>
             <button id="btn-start-review" onclick="startSpeedReview()" class="px-4 py-2 w-full sm:w-auto text-sm font-bold bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition duration-150 shadow-lg">
@@ -538,22 +819,30 @@
             </button>
         </div>
 
+        <!-- Conversation Practice View -->
         <div id="conversation-container" class="hidden">
-            </div>
+            <!-- Content rendered by renderConversationPractice() -->
+        </div>
         
+        <!-- Flashcard View -->
         <div id="flashcard-container">
+            <!-- Lesson Navigation (Practice Mode Only) -->
             <div id="lesson-nav-container">
                 <nav id="lesson-nav" class="flex flex-wrap gap-3 mb-6 p-4 bg-white rounded-2xl shadow-md"></nav>
             </div>
 
+            <!-- Flashcard Area -->
             <section class="bg-white rounded-3xl shadow-2xl overflow-hidden p-6 mb-6 lesson-card">
                 <div id="card-container" class="relative h-80">
-                    </div>
+                    <!-- Card content will be rendered here -->
+                </div>
             </section>
 
+            <!-- Card Details and Navigation -->
             <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
                 <div id="card-detail" class="mb-4 sm:mb-0">
-                    </div>
+                    <!-- Card details will be rendered here -->
+                </div>
                 <div class="flex space-x-3 w-full sm:w-auto">
                     <button id="btn-prev" onclick="prevCard()" class="flex-1">
                         < Back
