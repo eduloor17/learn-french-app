@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>French Learning Companion</title>
+    <title>Expanded French Learning Hub</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Configure Inter font -->
@@ -31,9 +31,9 @@
             position: absolute;
             width: 100%;
             height: 100%;
-            -webkit-backface-visibility: hidden; /* Safari */
+            -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
-            border-radius: 1rem;
+            border-radius: 1.5rem; /* Slightly larger radius */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -49,16 +49,52 @@
             color: #ffffff;
             transform: rotateY(180deg);
         }
+        .listen-btn, .action-btn {
+            background-color: #f97316; /* Orange */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: bold;
+            transition: background-color 0.15s, box-shadow 0.15s, transform 0.15s;
+            box-shadow: 0 4px #c2410c;
+        }
+        .listen-btn:hover, .action-btn:hover {
+            background-color: #ea580c;
+        }
+        .listen-btn:active, .action-btn:active {
+            box-shadow: none;
+            transform: translateY(4px);
+        }
+        .record-btn-active {
+            background-color: #ef4444; /* Red */
+            box-shadow: 0 4px #b91c1c;
+            animation: pulse 1s infinite;
+        }
+        .record-btn-active:hover {
+            background-color: #dc2626;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .phonetic {
+            color: #f97316; /* Orange 500 */
+        }
     </style>
     <!-- Firebase Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
         setLogLevel('Debug');
 
+        // --- GLOBAL CONFIGS & STATE ---
+        const API_KEY = ""; // Kept empty as per instructions
+        const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
+        const TTS_VOICE = "Kore"; // A firm, clear voice
+        
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'french-learner-default';
@@ -67,135 +103,225 @@
         let userId = null;
         let isAuthReady = false;
 
-        // --- LESSON DATA (EXPANDED TO MINIMUM 15 CARDS EACH) ---
-        const LESSONS = [
-            { id: 1, title: "Greetings & Politeness", progressKey: "greetings", cards: [
-                { french: "Bonjour", english: "Hello / Good day" },
-                { french: "Bonsoir", english: "Good evening" },
-                { french: "Salut", english: "Hi / Bye (informal)" },
-                { french: "Au revoir", english: "Goodbye" },
-                { french: "À bientôt", english: "See you soon" },
-                { french: "Bonne nuit", english: "Good night" },
-                { french: "Comment ça va ?", english: "How are you? (informal)" },
-                { french: "Comment allez-vous ?", english: "How are you? (formal)" },
-                { french: "Ça va bien, merci.", english: "I am fine, thank you." },
-                { french: "Et vous ?", english: "And you? (formal)" },
-                { french: "Et toi ?", english: "And you? (informal)" },
-                { french: "S'il vous plaît", english: "Please (formal)" },
-                { french: "S'il te plaît", english: "Please (informal)" },
-                { french: "Merci beaucoup", english: "Thank you very much" },
-                { french: "De rien", english: "You're welcome" },
-                { french: "Je vous en prie", english: "You're welcome (formal)" },
-            ]},
-            { id: 2, title: "Basic Statements", progressKey: "statements", cards: [
-                { french: "Oui", english: "Yes" },
-                { french: "Non", english: "No" },
-                { french: "Peut-être", english: "Maybe / Perhaps" },
-                { french: "D'accord", english: "Okay / Agreed" },
-                { french: "Je suis", english: "I am" },
-                { french: "Tu es", english: "You are (informal)" },
-                { french: "Je parle anglais", english: "I speak English" },
-                { french: "Parlez-vous français ?", english: "Do you speak French? (formal)" },
-                { french: "J'ai faim", english: "I am hungry (I have hunger)" },
-                { french: "J'ai soif", english: "I am thirsty (I have thirst)" },
-                { french: "Où est la gare ?", english: "Where is the station?" },
-                { french: "Combien ça coûte ?", english: "How much does it cost?" },
-                { french: "C'est bon", english: "It is good / tasty" },
-                { french: "C'est mauvais", english: "It is bad / not good" },
-                { french: "Je comprends", english: "I understand" },
-                { french: "Je ne comprends pas", english: "I do not understand" },
-                { french: "Excusez-moi", english: "Excuse me / I'm sorry" },
-            ]},
-            { id: 3, title: "Numbers (1-20)", progressKey: "numbers_1_20", cards: [
-                { french: "Zéro", english: "Zero" },
-                { french: "Un", english: "One" },
-                { french: "Deux", english: "Two" },
-                { french: "Trois", english: "Three" },
-                { french: "Quatre", english: "Four" },
-                { french: "Cinq", english: "Five" },
-                { french: "Six", english: "Six" },
-                { french: "Sept", english: "Seven" },
-                { french: "Huit", english: "Eight" },
-                { french: "Neuf", english: "Nine" },
-                { french: "Dix", english: "Ten" },
-                { french: "Onze", english: "Eleven" },
-                { french: "Douze", english: "Twelve" },
-                { french: "Treize", english: "Thirteen" },
-                { french: "Quatorze", english: "Fourteen" },
-                { french: "Quinze", english: "Fifteen" },
-                { french: "Seize", english: "Sixteen" },
-                { french: "Dix-sept", english: "Seventeen" },
-                { french: "Dix-huit", english: "Eighteen" },
-                { french: "Dix-neuf", english: "Nineteen" },
-                { french: "Vingt", english: "Twenty" },
-            ]},
-            { id: 4, title: "Colors", progressKey: "colors", cards: [
-                { french: "Rouge", english: "Red" },
-                { french: "Bleu", english: "Blue" },
-                { french: "Vert", english: "Green" },
-                { french: "Jaune", english: "Yellow" },
-                { french: "Noir", english: "Black" },
-                { french: "Blanc", english: "White" },
-                { french: "Orange (adjective)", english: "Orange (masc/fem same)" },
-                { french: "Violet / Violette", english: "Purple (m/f)" },
-                { french: "Rose", english: "Pink" },
-                { french: "Gris / Grise", english: "Gray (m/f)" },
-                { french: "Marron", english: "Brown (invariable)" },
-                { french: "Brun / Brune", english: "Brown (hair, eyes, m/f)" },
-                { french: "Claire", english: "Light (feminine)" },
-                { french: "Foncé", english: "Dark (masculine)" },
-                { french: "Quelle couleur ?", english: "What color?" },
-                { french: "L'arc-en-ciel", english: "The rainbow" },
-            ]},
-            { id: 5, title: "Articles & Nouns", progressKey: "articles", cards: [
-                { french: "Le", english: "The (masculine singular)" },
-                { french: "La", english: "The (feminine singular)" },
-                { french: "Les", english: "The (plural)" },
-                { french: "L'", english: "The (before vowel/silent 'h')" },
-                { french: "Un", english: "A / An (masculine)" },
-                { french: "Une", english: "A / An (feminine)" },
-                { french: "Des", english: "Some / A few (plural indefinite)" },
-                { french: "Le chien", english: "The dog" },
-                { french: "La maison", english: "The house" },
-                { french: "Les livres", english: "The books" },
-                { french: "Un chat", english: "A cat" },
-                { french: "Une table", english: "A table" },
-                { french: "L'eau (f)", english: "The water" },
-                { french: "Il y a un problème", english: "There is a problem" },
-                { french: "J'aime le fromage", english: "I like the cheese" },
-                { french: "Je veux une pomme", english: "I want an apple" },
-            ]},
-            { id: 6, title: "Verb: Être (To Be)", progressKey: "etre", cards: [
-                { french: "Je suis", english: "I am" },
-                { french: "Tu es", english: "You are (informal)" },
-                { french: "Il est", english: "He is" },
-                { french: "Elle est", english: "She is" },
-                { french: "On est", english: "One is / We are (informal)" },
-                { french: "Nous sommes", english: "We are (formal)" },
-                { french: "Vous êtes", english: "You are (formal/plural)" },
-                { french: "Ils sont", english: "They are (masculine plural)" },
-                { french: "Elles sont", english: "They are (feminine plural)" },
-                { french: "Je suis fatigué(e)", english: "I am tired (m/f)" },
-                { french: "Tu es gentil(le)", english: "You are kind (m/f)" },
-                { french: "Il est professeur", english: "He is a teacher" },
-                { french: "Nous sommes en retard", english: "We are late" },
-                { french: "Vous êtes prêts", english: "You are ready (plural)" },
-                { french: "Ils sont grands", english: "They are tall" },
-                { french: "C'est facile", english: "It is easy" },
-            ]},
-        ];
+        // --- VOICE RECORDING STATE ---
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordedAudioBlob = null;
+        let isRecording = false;
 
-        window.LESSONS = LESSONS;
+        // --- APPLICATION STATE ---
         window.currentProgress = {};
         window.currentLessonIndex = 0;
         window.currentCardIndex = 0;
         window.isFlipped = false;
-        
-        // --- NEW STATE FOR REVIEW MODE ---
-        window.currentMode = 'practice'; // 'practice' or 'review'
-        window.activeCardList = LESSONS[0].cards; // The list of cards currently being displayed
+        window.currentMode = 'practice'; // 'practice', 'review', or 'conversations'
+        window.activeCardList = [];
+        window.currentConversationIndex = 0;
+        let isAudioPlaying = false; 
 
-        // Utility function for exponential backoff retry
+        // --- CONTENT DATA ---
+
+        const LESSONS = [
+            { id: 1, title: "Greetings & Politeness", progressKey: "greetings", cards: [
+                { french: "Bonjour", english: "Hello / Good day", phonetic: "/bon-zhoor/" },
+                { french: "Bonsoir", english: "Good evening", phonetic: "/bon-swar/" },
+                { french: "Salut", english: "Hi / Bye (informal)", phonetic: "/sah-loo/" },
+                { french: "Au revoir", english: "Goodbye", phonetic: "/oh-ruh-vwar/" },
+                { french: "À bientôt", english: "See you soon", phonetic: "/ah byan-toh/" },
+                { french: "Comment ça va ?", english: "How are you? (informal)", phonetic: "/ko-mon sa va/" },
+                { french: "Ça va bien, merci.", english: "I am fine, thank you.", phonetic: "/sa va byan mer-see/" },
+                { french: "Et vous ?", english: "And you? (formal)", phonetic: "/ay voo/" },
+                { french: "S'il vous plaît", english: "Please (formal)", phonetic: "/seel voo play/" },
+                { french: "Merci beaucoup", english: "Thank you very much", phonetic: "/mer-see bo-koo/" },
+                { french: "De rien", english: "You're welcome", phonetic: "/duh ryen/" },
+                { french: "Je comprends", english: "I understand", phonetic: "/zhuh kom-pran/" },
+                { french: "Je ne comprends pas", english: "I do not understand", phonetic: "/zhuh nuh kom-pran pah/" },
+                { french: "Excusez-moi", english: "Excuse me / I'm sorry", phonetic: "/ex-koo-zay mwah/" },
+            ]},
+            { id: 2, title: "Verbs: Être & Avoir", progressKey: "etre_avoir", cards: [
+                { french: "Je suis (Être)", english: "I am", phonetic: "/zhuh swee/" }, 
+                { french: "Tu es (Être)", english: "You are (informal)", phonetic: "/too eh/" },
+                { french: "Il/Elle est (Être)", english: "He/She is", phonetic: "/eel/el eh/" },
+                { french: "Nous sommes (Être)", english: "We are", phonetic: "/noo sum/" },
+                { french: "Vous êtes (Être)", english: "You are (formal/plural)", phonetic: "/voo zet/" }, 
+                { french: "Ils/Elles sont (Être)", english: "They are", phonetic: "/eel/el son/" },
+                { french: "J'ai (Avoir)", english: "I have", phonetic: "/zheh/" },
+                { french: "Tu as (Avoir)", english: "You have (informal)", phonetic: "/too ah/" },
+                { french: "Il/Elle a (Avoir)", english: "He/She has", phonetic: "/eel/el ah/" },
+                { french: "Nous avons (Avoir)", english: "We have", phonetic: "/noo za-von/" },
+                { french: "Vous avez (Avoir)", english: "You have (formal/plural)", phonetic: "/voo za-vay/" },
+                { french: "Ils/Elles ont (Avoir)", english: "They have", phonetic: "/eel/el zon/" },
+                { french: "J'ai soif", english: "I am thirsty (I have thirst)", phonetic: "/zheh swaf/" },
+                { french: "Nous avons une idée", english: "We have an idea", phonetic: "/noo za-von oon ee-day/" },
+            ]},
+            { id: 3, title: "Verbs: Aller, Faire, Vouloir", progressKey: "aller_faire_vouloir", cards: [
+                { french: "Je vais (Aller)", english: "I go / I am going", phonetic: "/zhuh vay/" }, 
+                { french: "Tu vas (Aller)", english: "You go (informal)", phonetic: "/too vah/" },
+                { french: "Nous allons (Aller)", english: "We go", phonetic: "/noo za-lon/" },
+                { french: "Vous allez (Aller)", english: "You go (formal/plural)", phonetic: "/voo za-lay/" },
+                { french: "Je fais (Faire)", english: "I do / I make", phonetic: "/zhuh fay/" }, 
+                { french: "Tu fais (Faire)", english: "You do (informal)", phonetic: "/too fay/" },
+                { french: "Nous faisons (Faire)", english: "We do / We make", phonetic: "/noo fuh-zon/" },
+                { french: "Vous faites (Faire)", english: "You do (formal/plural)", phonetic: "/voo fet/" },
+                { french: "Je veux (Vouloir)", english: "I want", phonetic: "/zhuh vuh/" },
+                { french: "Tu veux (Vouloir)", english: "You want (informal)", phonetic: "/too vuh/" },
+                { french: "Nous voulons (Vouloir)", english: "We want", phonetic: "/noo voo-lon/" },
+                { french: "Vous voulez (Vouloir)", english: "You want (formal/plural)", phonetic: "/voo voo-lay/" },
+                { french: "Je veux faire ça", english: "I want to do this", phonetic: "/zhuh vuh fer sah/" },
+                { french: "Où allez-vous ?", english: "Where are you going?", phonetic: "/oo a-lay voo/" },
+            ]},
+            { id: 4, title: "Numbers (0-100)", progressKey: "numbers_0_100", cards: [
+                { french: "Zéro", english: "Zero", phonetic: "/ze-roh/" }, { french: "Un", english: "One", phonetic: "/uh/" }, { french: "Deux", english: "Two", phonetic: "/duh/" },
+                { french: "Trois", english: "Three", phonetic: "/trwah/" }, { french: "Dix", english: "Ten", phonetic: "/dees/" }, { french: "Vingt", english: "Twenty", phonetic: "/vant/" },
+                { french: "Vingt-et-un", english: "Twenty-one", phonetic: "/vant-ay-uh/" }, { french: "Trente", english: "Thirty", phonetic: "/tront/" },
+                { french: "Quarante", english: "Forty", phonetic: "/ka-ront/" }, { french: "Cinquante", english: "Fifty", phonetic: "/sank-ont/" },
+                { french: "Soixante", english: "Sixty", phonetic: "/swa-sant/" }, { french: "Soixante-dix", english: "Seventy (60+10)", phonetic: "/swa-sant-dees/" },
+                { french: "Quatre-vingts", english: "Eighty (4x20)", phonetic: "/katr-vant/" }, { french: "Quatre-vingt-dix", english: "Ninety (4x20+10)", phonetic: "/katr-vant-dees/" },
+                { french: "Cent", english: "One Hundred", phonetic: "/sant/" }, 
+                { french: "Quelle est l'heure ?", english: "What time is it?", phonetic: "/kel eh lur/" }, 
+                { french: "Il est huit heures", english: "It is eight o'clock", phonetic: "/eel eh weet ur/" },
+                { french: "J'ai soixante-douze ans", english: "I am seventy-two years old", phonetic: "/zheh swa-sant-dooz ahn/" }, 
+                { french: "Le prix est quatre-vingt-neuf", english: "The price is eighty-nine", phonetic: "/luh pree eh katr-vant-nuf/" },
+            ]},
+            { id: 5, title: "60 Common Animals", progressKey: "animals_60", cards: [
+                { french: "Le chien", english: "Dog", phonetic: "/luh shyen/" }, { french: "Le chat", english: "Cat", phonetic: "/luh shah/" },
+                { french: "Le cheval", english: "Horse", phonetic: "/luh shuh-val/" }, { french: "La vache", english: "Cow", phonetic: "/la vash/" },
+                { french: "Le cochon", english: "Pig", phonetic: "/luh ko-shon/" }, { french: "La chèvre", english: "Goat", phonetic: "/la shevr/" },
+                { french: "Le mouton", english: "Sheep", phonetic: "/luh moo-ton/" }, { french: "Le lapin", english: "Rabbit", phonetic: "/luh la-pan/" },
+                { french: "Le canard", english: "Duck", phonetic: "/luh ka-nar/" }, { french: "La poule", english: "Chicken (hen)", phonetic: "/la pool/" },
+                { french: "Le dindon", english: "Turkey", phonetic: "/luh dan-don/" }, { french: "L'oie (f)", english: "Goose", phonetic: "/lwa/" },
+                { french: "Le poisson", english: "Fish", phonetic: "/luh pwa-son/" }, { french: "L'oiseau (m)", english: "Bird", phonetic: "/lwa-zoh/" },
+                { french: "Le lion", english: "Lion", phonetic: "/luh lee-on/" }, { french: "Le tigre", english: "Tiger", phonetic: "/luh tee-gr/" },
+                { french: "L'éléphant (m)", english: "Elephant", phonetic: "/lay-lay-fan/" }, { french: "La girafe", english: "Giraffe", phonetic: "/la zhee-raf/" },
+                { french: "Le singe", english: "Monkey", phonetic: "/luh sanj/" }, { french: "L'ours (m)", english: "Bear", phonetic: "/loors/" },
+                { french: "Le loup", english: "Wolf", phonetic: "/luh loo/" }, { french: "Le renard", english: "Fox", phonetic: "/luh ruh-nar/" },
+                { french: "Le cerf", english: "Deer", phonetic: "/luh serf/" }, { french: "L'écureuil (m)", english: "Squirrel", phonetic: "/lay-koo-roy/" },
+                { french: "Le hérisson", english: "Hedgehog", phonetic: "/luh ay-ree-son/" }, { french: "La souris", english: "Mouse", phonetic: "/la soo-ree/" },
+                { french: "Le rat", english: "Rat", phonetic: "/luh rah/" }, { french: "La chauve-souris", english: "Bat", phonetic: "/la shohv-soo-ree/" },
+                { french: "Le serpent", english: "Snake", phonetic: "/luh ser-pon/" }, { french: "La tortue", english: "Turtle", phonetic: "/la tor-too/" },
+                { french: "Le crocodile", english: "Crocodile", phonetic: "/luh kro-ko-deel/" }, { french: "Le lézard", english: "Lizard", phonetic: "/luh lay-zar/" },
+                { french: "La grenouille", english: "Frog", phonetic: "/la gruh-nooy/" }, { french: "Le papillon", english: "Butterfly", phonetic: "/luh pa-pee-yon/" },
+                { french: "L'abeille (f)", english: "Bee", phonetic: "/la-bay/" }, { french: "La fourmi", english: "Ant", phonetic: "/la foor-mee/" },
+                { french: "Le moustique", english: "Mosquito", phonetic: "/luh moos-teek/" }, { french: "L'araignée (f)", english: "Spider", phonetic: "/la-re-nyay/" },
+                { french: "La mouche", english: "Fly", phonetic: "/la moosh/" }, { french: "Le coq", english: "Rooster", phonetic: "/luh kok/" },
+                { french: "Le hibou", english: "Owl", phonetic: "/luh ee-boo/" }, { french: "Le pigeon", english: "Pigeon", phonetic: "/luh pee-zhohn/" },
+                { french: "L'aigle (m)", english: "Eagle", phonetic: "/lay-gl/" }, { french: "Le cygne", english: "Swan", phonetic: "/luh seen/" },
+                { french: "Le dauphin", english: "Dolphin", phonetic: "/luh doh-fan/" }, { french: "La baleine", english: "Whale", phonetic: "/la ba-len/" },
+                { french: "Le requin", english: "Shark", phonetic: "/luh ruh-kan/" }, { french: "Le crabe", english: "Crab", phonetic: "/luh krab/" },
+                { french: "L'escargot (m)", english: "Snail", phonetic: "/les-kar-goh/" }, { french: "La crevette", english: "Shrimp", phonetic: "/la kruh-vet/" },
+                { french: "La méduse", english: "Jellyfish", phonetic: "/la may-dooz/" }, { french: "Le phoque", english: "Seal", phonetic: "/luh fok/" },
+                { french: "Le pingouin", english: "Penguin", phonetic: "/luh pan-gwan/" }, { french: "Le chameau", english: "Camel", phonetic: "/luh sha-moh/" },
+                { french: "Le zèbre", english: "Zebra", phonetic: "/luh zebr/" }, { french: "Le rhinocéros", english: "Rhinoceros", phonetic: "/luh ree-no-say-ros/" },
+                { french: "L'hippopotame (m)", english: "Hippopotamus", phonetic: "/lee-po-po-tam/" }, { french: "La panthère", english: "Panther", phonetic: "/la pan-ter/" },
+                { french: "Le flamant rose", english: "Flamingo", phonetic: "/luh fla-man rohz/" }, { french: "Le raton laveur", english: "Raccoon", phonetic: "/luh ra-ton la-vur/" },
+                { french: "Le castor", english: "Beaver", phonetic: "/luh kas-tor/" }, { french: "La marmotte", english: "Groundhog/Marmot", phonetic: "/la mar-mot/" },
+                { french: "Le dromadaire", english: "Dromedary (camel)", phonetic: "/luh dro-ma-der/" }, { french: "Le kangourou", english: "Kangaroo", phonetic: "/luh kahn-goo-roo/" },
+            ]},
+            { id: 6, title: "Colors & Adjectives", progressKey: "colors_adj", cards: [
+                { french: "Rouge", english: "Red", phonetic: "/roozh/" }, { french: "Bleu / Bleue", english: "Blue (m/f)", phonetic: "/bluh/" }, 
+                { french: "Vert / Verte", english: "Green (m/f)", phonetic: "/ver / vert/" }, { french: "Jaune", english: "Yellow (m/f same)", phonetic: "/zhon/" }, 
+                { french: "Noir / Noire", english: "Black (m/f)", phonetic: "/nwar / nwar/" }, { french: "Blanc / Blanche", english: "White (m/f)", phonetic: "/blan / blansh/" },
+                { french: "Grand / Grande", english: "Tall / Big (m/f)", phonetic: "/grahn / grahnd/" }, { french: "Petit / Petite", english: "Small / Short (m/f)", phonetic: "/puh-tee / puh-teet/" },
+                { french: "Bon / Bonne", english: "Good (m/f)", phonetic: "/bon / bun/" }, { french: "Mauvais / Mauvaise", english: "Bad (m/f)", phonetic: "/mo-veh / mo-vez/" },
+                { french: "Beau / Belle", english: "Beautiful (m/f)", phonetic: "/boh / bel/" }, { french: "Facile", english: "Easy (m/f same)", phonetic: "/fah-seel/" }, 
+                { french: "Difficile", english: "Difficult (m/f same)", phonetic: "/dee-fee-seel/" }, { french: "Rapide", english: "Fast / Quick (m/f same)", phonetic: "/ra-peed/" },
+            ]},
+        ];
+
+        const CONVERSATIONS = [
+            { topic: "At the Café", question: "Qu'est-ce que vous prendrez ?", 
+              answers: [{ text: "Je voudrais un café, s'il vous plaît.", phonetic: "/zhuh voo-dray uh ka-fay, seel voo play/" },
+                        { text: "Je vais prendre un thé vert.", phonetic: "/zhuh vay pron-dr uh tay ver/" }]
+            },
+            { topic: "Asking Directions", question: "Où se trouve la Tour Eiffel ?", 
+              answers: [{ text: "C'est tout droit, après le pont.", phonetic: "/seh too drwah, ah-pray luh pon/" },
+                        { text: "Je suis désolé, je ne sais pas.", phonetic: "/zhuh swee day-zo-lay, zhuh nuh say pah/" }]
+            },
+            { topic: "Meeting Someone", question: "Comment vous appelez-vous ?", 
+              answers: [{ text: "Je m'appelle Thomas, et vous ?", phonetic: "/zhuh ma-pel Toh-mah, ay voo/" },
+                        { text: "Je suis Marie. Enchantée.", phonetic: "/zhuh swee Mah-ree. Ahn-shahn-tay/" }]
+            },
+            { topic: "Shopping", question: "Combien coûte cette écharpe ?", 
+              answers: [{ text: "Elle coûte vingt-cinq euros.", phonetic: "/el koot van-sank eu-roh/" },
+                        { text: "C'est trop cher, merci.", phonetic: "/seh tro sher, mer-see/" }]
+            },
+            { topic: "Ordering Food", question: "Voulez-vous un dessert ?", 
+              answers: [{ text: "Oui, je prendrai une tarte au chocolat.", phonetic: "/wee, zhuh pron-dray oon tart oh sho-ko-lah/" },
+                        { text: "Non merci, juste l'addition.", phonetic: "/non mer-see, joost la-dee-see-on/" }]
+            },
+            { topic: "Talking About Hobbies", question: "Qu'est-ce que vous aimez faire ?", 
+              answers: [{ text: "J'aime lire et voyager.", phonetic: "/zhem leer ay vwa-ya-zhay/" },
+                        { text: "Je fais du sport tous les jours.", phonetic: "/zhuh fay doo spor too lay zhoor/" }]
+            },
+            { topic: "Checking in (Hotel)", question: "Avez-vous une réservation ?", 
+              answers: [{ text: "Oui, au nom de Dupont.", phonetic: "/wee, oh nom duh Doo-pon/" },
+                        { text: "Non, avez-vous une chambre libre ?", phonetic: "/non, a-vay voo oon shambr leebr/" }]
+            },
+            { topic: "Weather", question: "Quel temps fait-il aujourd'hui ?", 
+              answers: [{ text: "Il fait beau et chaud.", phonetic: "/eel fay boh ay shoh/" },
+                        { text: "Il pleut, c'est dommage.", phonetic: "/eel pluh, seh doh-mazh/" }]
+            },
+            { topic: "Making Plans", question: "On se voit à quelle heure ?", 
+              answers: [{ text: "Rendez-vous à dix-huit heures.", phonetic: "/ron-day voo ah deez-weet ur/" },
+                        { text: "Je suis occupé ce soir.", phonetic: "/zhuh sweez o-koo-pay su swar/" }]
+            },
+            { topic: "At the Bakery", question: "Vous désirez autre chose ?", 
+              answers: [{ text: "Non, c'est tout pour moi, merci.", phonetic: "/non, seh too poor mwah, mer-see/" },
+                        { text: "Oui, deux croissants s'il vous plaît.", phonetic: "/wee, duh krwa-son seel voo play/" }]
+            },
+        ];
+
+        window.LESSONS = LESSONS;
+        window.CONVERSATIONS = CONVERSATIONS;
+        
+        // --- AUDIO UTILITY FUNCTIONS (PCM to WAV Conversion) ---
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function pcmToWav(pcm16, sampleRate = 24000) {
+            const numChannels = 1;
+            const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+            const view = new DataView(buffer);
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcm16.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2 * numChannels, true);
+            view.setUint16(32, numChannels * 2, true);
+            view.setUint16(34, 16, true);
+
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcm16.length * 2, true);
+
+            let offset = 44;
+            for (let i = 0; i < pcm16.length; i++, offset += 2) {
+                view.setInt16(offset, pcm16[i], true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+        
+        // --- GEMINI TTS API CALL & Retry Utility ---
         const withRetry = async (fn, maxRetries = 3) => {
             for (let i = 0; i < maxRetries; i++) {
                 try {
@@ -205,6 +331,146 @@
                     const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
+            }
+        };
+
+        async function callTTSApi(text) {
+            const payload = {
+                contents: [{ parts: [{ text: text }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: { prebuiltVoiceConfig: { voiceName: TTS_VOICE } }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            const response = await fetch(TTS_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`TTS API failed with status: ${response.status}`);
+            }
+            const result = await response.json();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 24000;
+                
+                const pcmData = base64ToArrayBuffer(audioData);
+                const pcm16 = new Int16Array(pcmData);
+                
+                const wavBlob = pcmToWav(pcm16, sampleRate);
+                return URL.createObjectURL(wavBlob);
+            } else {
+                throw new Error("Invalid or missing audio data in TTS response.");
+            }
+        }
+
+        window.handleListenClick = async (text, elementId = 'listen-button-main') => {
+            if (isAudioPlaying) return;
+            const button = document.getElementById(elementId);
+            if (!button) return;
+
+            const originalText = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg> Loading...`;
+            isAudioPlaying = true;
+            
+            try {
+                let audioUrl;
+                await withRetry(async () => {
+                    audioUrl = await callTTSApi(text);
+                });
+
+                const audio = new Audio(audioUrl);
+                audio.play();
+                
+                audio.onended = () => {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                    isAudioPlaying = false;
+                    URL.revokeObjectURL(audioUrl);
+                };
+            } catch (error) {
+                console.error("TTS Error:", error);
+                showNotification("Could not generate audio. Please check console.", 'error');
+                button.disabled = false;
+                button.innerHTML = originalText;
+                isAudioPlaying = false;
+            }
+        };
+
+        // --- VOICE RECORDING LOGIC ---
+
+        window.toggleRecording = async () => {
+            const recordBtn = document.getElementById('record-btn');
+            const playBtn = document.getElementById('play-btn');
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showNotification("Microphone access not supported in this browser/environment.", 'error');
+                return;
+            }
+
+            if (!isRecording) {
+                // Start recording
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    recordedAudioBlob = null;
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        // Cleanup stream tracks
+                        stream.getTracks().forEach(track => track.stop());
+                        recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg> Start Recording`;
+                        recordBtn.classList.remove('record-btn-active');
+                        playBtn.disabled = false; // Enable playback
+                        isRecording = false;
+                        showNotification("Recording finished. Click 'Play My Recording' to listen.", 'info');
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    playBtn.disabled = true; // Disable playback while recording
+                    recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="5"/></svg> Stop Recording`;
+                    recordBtn.classList.add('record-btn-active');
+                    showNotification("Recording started...", 'info');
+
+                } catch (err) {
+                    console.error('Recording failed:', err);
+                    showNotification(`Error accessing microphone: ${err.name}.`, 'error');
+                }
+            } else {
+                // Stop recording
+                mediaRecorder.stop();
+            }
+        };
+
+        window.playRecording = () => {
+            if (recordedAudioBlob) {
+                const audioUrl = URL.createObjectURL(recordedAudioBlob);
+                const audio = new Audio(audioUrl);
+                audio.play();
+                audio.onended = () => { URL.revokeObjectURL(audioUrl); };
+            } else {
+                showNotification("No recording available. Please record your voice first.", 'info');
             }
         };
 
@@ -218,24 +484,17 @@
 
         const loadProgress = () => {
             const docRef = getProgressDocRef();
-            if (!docRef || !isAuthReady) {
-                console.log("Firestore not ready or unauthorized, skipping progress load.");
-                return;
-            }
+            if (!docRef || !isAuthReady) return;
 
-            // Listen for real-time updates to user progress
             onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
                     window.currentProgress = docSnap.data().progress || {};
-                    console.log("Progress loaded:", window.currentProgress);
-                    // Ensure the initial activeCardList is set based on the first lesson
                     window.activeCardList = LESSONS[window.currentLessonIndex].cards; 
-                    renderApp(); // Re-render application state
+                    renderApp(); 
                 } else {
-                    console.log("No progress data found, initializing empty progress.");
                     window.currentProgress = {};
                     window.activeCardList = LESSONS[window.currentLessonIndex].cards;
-                    renderApp(); // Initial render
+                    renderApp(); 
                 }
             }, (error) => {
                 console.error("Error listening to progress:", error);
@@ -256,7 +515,6 @@
 
             try {
                 await withRetry(() => setDoc(docRef, dataToSave, { merge: true }));
-                console.log("Progress saved successfully!");
             } catch (error) {
                 console.error("Failed to save progress:", error);
                 showNotification("Failed to save progress. Check console for details.", 'error');
@@ -266,10 +524,8 @@
         const initFirebase = async () => {
             try {
                 if (Object.keys(firebaseConfig).length === 0) {
-                    console.warn("Firebase config not available. App will run without persistence.");
-                    document.getElementById('loading-message').textContent = "Running without cloud persistence.";
                     isAuthReady = true;
-                    userId = crypto.randomUUID(); // Mock ID for local functions
+                    userId = crypto.randomUUID(); 
                     window.activeCardList = LESSONS[0].cards;
                     renderApp();
                     return;
@@ -281,9 +537,8 @@
 
                 const authPromise = new Promise(resolve => {
                     onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            userId = user.uid;
-                        } else {
+                        if (user) { userId = user.uid; } 
+                        else {
                             try {
                                 if (initialAuthToken) {
                                     const userCredential = await signInWithCustomToken(auth, initialAuthToken);
@@ -294,7 +549,7 @@
                                 }
                             } catch (error) {
                                 console.error("Authentication failed:", error);
-                                userId = crypto.randomUUID(); // Fallback
+                                userId = crypto.randomUUID(); 
                             }
                         }
                         isAuthReady = true;
@@ -305,7 +560,6 @@
                 await authPromise;
                 document.getElementById('user-id-display').textContent = `User ID: ${userId.substring(0, 8)}...`;
                 loadProgress();
-
             } catch (error) {
                 console.error("Failed to initialize Firebase:", error);
                 document.getElementById('loading-message').textContent = "Error initializing Firebase. Check console.";
@@ -317,38 +571,42 @@
         const showNotification = (message, type = 'info') => {
             const notification = document.getElementById('notification-box');
             notification.textContent = message;
-            notification.className = `p-3 rounded-xl text-sm transition-all duration-300 ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-100 text-green-800'} shadow-lg`;
+            notification.className = `p-3 rounded-xl text-sm transition-all duration-300 fixed top-4 right-4 z-50 shadow-xl 
+            ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-100 text-green-800'}`;
             notification.style.opacity = 1;
             setTimeout(() => {
                 notification.style.opacity = 0;
             }, 3000);
         };
 
+        window.changeView = (view) => {
+            window.currentMode = view;
+            window.isFlipped = false;
+            if (view === 'conversations') {
+                window.currentConversationIndex = 0;
+            } else if (view === 'practice') {
+                window.activeCardList = LESSONS[window.currentLessonIndex].cards;
+            }
+            renderApp();
+        };
+
+        // --- FLASHCARD MODE FUNCTIONS ---
+
         window.startSpeedReview = () => {
             window.currentMode = 'review';
-
             let reviewCards = [];
-            // Collect cards from all lessons, prioritizing incomplete ones
             LESSONS.forEach(lesson => {
-                const isCompleted = window.currentProgress[lesson.progressKey];
-                // Prioritize incomplete lessons 3x more
-                let multiplier = isCompleted ? 1 : 3; 
-
-                // Add cards based on multiplier
+                const multiplier = window.currentProgress[lesson.progressKey] ? 1 : 3; 
                 for (let i = 0; i < multiplier; i++) {
                     lesson.cards.forEach(card => {
-                        // Attach the lesson title for display in review mode
                         reviewCards.push({...card, lessonTitle: lesson.title});
                     });
                 }
             });
-
-            // Simple shuffle (Fisher-Yates)
             for (let i = reviewCards.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [reviewCards[i], reviewCards[j]] = [reviewCards[j], reviewCards[i]];
             }
-
             window.activeCardList = reviewCards;
             window.currentCardIndex = 0;
             window.isFlipped = false;
@@ -366,6 +624,7 @@
         };
 
         window.flipCard = () => {
+            if (window.currentMode === 'conversations') return; // Do not flip in conversation mode
             window.isFlipped = !window.isFlipped;
             const flipContainer = document.getElementById('flip-container');
             if (flipContainer) {
@@ -380,21 +639,17 @@
                 window.isFlipped = false;
                 renderApp();
             } else {
-                // End of the list reached
                 if (window.currentMode === 'practice') {
                     const lesson = LESSONS[window.currentLessonIndex];
                     markLessonComplete(lesson.progressKey);
                     showNotification(`Lesson "${lesson.title}" completed!`);
-                    // Automatically move to the next lesson if available
                     if (window.currentLessonIndex < LESSONS.length - 1) {
                         window.selectLesson(window.currentLessonIndex + 1);
                     } else {
-                        // Loop back to the first lesson
                         window.selectLesson(0);
                     }
-                } else {
+                } else { // Review Mode finished
                     showNotification(`Speed Review finished! You reviewed ${list.length} cards.`);
-                    // Reset to the first lesson after review
                     window.selectLesson(0);
                 }
             }
@@ -415,25 +670,61 @@
             }
         };
 
+        // --- CONVERSATION MODE FUNCTIONS ---
+        
+        window.nextConversation = () => {
+            if (window.currentConversationIndex < CONVERSATIONS.length - 1) {
+                window.currentConversationIndex++;
+                renderApp();
+            } else {
+                window.currentConversationIndex = 0;
+                showNotification("Looping back to the first conversation topic.", 'info');
+                renderApp();
+            }
+        };
+
+        window.prevConversation = () => {
+            if (window.currentConversationIndex > 0) {
+                window.currentConversationIndex--;
+                renderApp();
+            }
+        };
+
+        // --- MAIN RENDER FUNCTION ---
+
         const renderApp = () => {
             document.getElementById('loading-state').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
 
+            // Set container visibility
+            const isConversation = window.currentMode === 'conversations';
+            document.getElementById('flashcard-container').style.display = isConversation ? 'none' : 'block';
+            document.getElementById('conversation-container').style.display = isConversation ? 'block' : 'none';
+            document.getElementById('lesson-nav-container').style.display = (window.currentMode === 'practice') ? 'block' : 'none';
+
+            // Render Flashcard View
+            if (!isConversation) {
+                renderFlashcardView();
+            } else {
+                renderConversationPractice();
+            }
+        };
+
+        const renderFlashcardView = () => {
             const list = window.activeCardList;
             const card = list[window.currentCardIndex];
             const isReviewMode = window.currentMode === 'review';
+            const flashcardContainer = document.getElementById('flashcard-container');
+            const navContainer = document.getElementById('lesson-nav');
 
-            // 1. Render Mode Display & Lesson Navigation Visibility
+            flashcardContainer.classList.remove('hidden');
+
+            // 1. Render Mode Display 
             document.getElementById('current-mode-display').textContent = isReviewMode ? 'Speed Review' : 'Practice';
-            document.getElementById('lesson-nav-container').style.display = isReviewMode ? 'none' : 'block';
-
+            document.getElementById('btn-start-review').style.display = isReviewMode ? 'none' : 'block';
 
             // 2. Render Lesson Navigation (Practice Mode Only)
-            const navContainer = document.getElementById('lesson-nav');
-            if (!isReviewMode) {
-                const lesson = LESSONS[window.currentLessonIndex];
-                const isCompleted = window.currentProgress[lesson.progressKey];
-
+            if (window.currentMode === 'practice') {
                 navContainer.innerHTML = LESSONS.map((l, index) => {
                     const isActive = index === window.currentLessonIndex;
                     const isDone = window.currentProgress[l.progressKey];
@@ -450,7 +741,6 @@
                 }).join('');
             }
 
-
             // 3. Render Card Container and Details
             const cardContainer = document.getElementById('card-container');
             const cardDetail = document.getElementById('card-detail');
@@ -461,7 +751,16 @@
                         <div class="text-center">
                             <p class="text-2xl font-semibold mb-2 text-gray-500">French</p>
                             <h2 class="text-5xl font-extrabold">${card.french}</h2>
-                            <p class="mt-4 text-sm text-gray-400">Click to reveal English!</p>
+                            <p class="text-2xl font-semibold mb-6 phonetic">${card.phonetic}</p>
+                            <button id="listen-button-main" onclick="event.stopPropagation(); handleListenClick('${card.french.replace(/'/g, "\\'")}', 'listen-button-main')" 
+                                class="listen-btn mt-6 flex items-center justify-center mx-auto text-lg hover:shadow-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-2 w-5 h-5 mr-2">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                                </svg>
+                                Listen
+                            </button>
+                            <p class="mt-4 text-sm text-gray-400">Click card to reveal English!</p>
                             ${isReviewMode ? `<p class="mt-2 text-xs text-indigo-400">From: ${card.lessonTitle}</p>` : ''}
                         </div>
                     </div>
@@ -474,17 +773,15 @@
                     </div>
                 </div>
             `;
-            // Ensure the initial flip state is correct
             if (window.isFlipped) {
                 document.getElementById('flip-container').classList.add('flipped');
             }
 
-            // 4. Render Card Details
+            // 4. Render Card Details and Navigation
             const totalCards = list.length;
             const currentCardNumber = window.currentCardIndex + 1;
             
             let detailText = `Card: ${currentCardNumber} of ${totalCards}`;
-
             if (!isReviewMode) {
                 const lesson = LESSONS[window.currentLessonIndex];
                 const isCompleted = window.currentProgress[lesson.progressKey];
@@ -495,13 +792,14 @@
 
             cardDetail.innerHTML = `<p class="text-sm text-gray-500 mt-4">${detailText}</p>`;
 
-            // 5. Render Navigation Buttons
             const btnPrev = document.getElementById('btn-prev');
             const btnNext = document.getElementById('btn-next');
             const isLastCard = window.currentCardIndex === totalCards - 1;
 
             btnPrev.disabled = window.currentCardIndex === 0;
-
+            btnPrev.onclick = prevCard;
+            btnNext.onclick = nextCard;
+            
             if (isLastCard) {
                 btnNext.textContent = isReviewMode ? "Finish Review" : "Mark Complete & Next Lesson";
                 btnNext.className = `p-3 rounded-xl font-semibold transition duration-150 bg-green-600 text-white hover:bg-green-700`;
@@ -509,8 +807,84 @@
                 btnNext.textContent = "Next Card";
                 btnNext.className = `p-3 rounded-xl font-semibold transition duration-150 bg-indigo-600 text-white hover:bg-indigo-700`;
             }
-            
             btnPrev.className = `p-3 rounded-xl font-semibold transition duration-150 ${window.currentCardIndex === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'}`;
+        };
+
+        const renderConversationPractice = () => {
+            const currentConv = CONVERSATIONS[window.currentConversationIndex];
+            const convContainer = document.getElementById('conversation-container');
+            const totalConvs = CONVERSATIONS.length;
+            
+            convContainer.classList.remove('hidden');
+            document.getElementById('current-mode-display').textContent = 'Conversations';
+
+            // Main Conversation Card
+            convContainer.innerHTML = `
+                <div class="bg-white rounded-3xl shadow-2xl p-6 mb-6">
+                    <div class="text-center pb-4 border-b border-gray-100">
+                        <p class="text-xl font-bold text-indigo-600">Topic: ${currentConv.topic}</p>
+                        <p class="text-sm text-gray-500">Scenario ${window.currentConversationIndex + 1} of ${totalConvs}</p>
+                    </div>
+
+                    <!-- Question Block -->
+                    <div class="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-200 shadow-inner">
+                        <p class="text-sm font-semibold text-indigo-700 mb-2">Question:</p>
+                        <h3 class="text-3xl font-extrabold text-indigo-900 mb-2">${currentConv.question}</h3>
+                        <p class="text-lg font-semibold phonetic">${currentConv.answers[0].phonetic.split('/').slice(0, 2).join('/').replace(',', '')}...</p>
+                        <button id="listen-button-q" onclick="handleListenClick('${currentConv.question.replace(/'/g, "\\'")}', 'listen-button-q')" 
+                            class="listen-btn mt-3 flex items-center justify-center text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                            Listen Question
+                        </button>
+                    </div>
+
+                    <h4 class="text-xl font-bold text-gray-700 mt-8 mb-4">Choose and Practice Your Answer:</h4>
+                    
+                    <!-- Answer Block 1 -->
+                    <div class="p-4 bg-white rounded-xl border border-gray-300 shadow-lg mb-4">
+                        <p class="text-2xl font-medium text-gray-800">${currentConv.answers[0].text}</p>
+                        <p class="text-sm font-semibold phonetic mb-3">${currentConv.answers[0].phonetic}</p>
+                        <button id="listen-button-a1" onclick="handleListenClick('${currentConv.answers[0].text.replace(/'/g, "\\'")}', 'listen-button-a1')" 
+                            class="listen-btn flex items-center justify-center text-sm px-3 py-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                            Listen Sample
+                        </button>
+                    </div>
+
+                    <!-- Answer Block 2 -->
+                    <div class="p-4 bg-white rounded-xl border border-gray-300 shadow-lg">
+                        <p class="text-2xl font-medium text-gray-800">${currentConv.answers[1].text}</p>
+                        <p class="text-sm font-semibold phonetic mb-3">${currentConv.answers[1].phonetic}</p>
+                        <button id="listen-button-a2" onclick="handleListenClick('${currentConv.answers[1].text.replace(/'/g, "\\'")}', 'listen-button-a2')" 
+                            class="listen-btn flex items-center justify-center text-sm px-3 py-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                            Listen Sample
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recording Controls -->
+                <div class="flex justify-center space-x-4 p-4 bg-indigo-100 rounded-2xl shadow-inner">
+                    <button id="record-btn" onclick="toggleRecording()" class="action-btn flex items-center text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                        Start Recording
+                    </button>
+                    <button id="play-btn" onclick="playRecording()" disabled class="action-btn flex items-center text-sm bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 disabled:cursor-not-allowed" style="box-shadow: 0 4px #4b5563;">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Play My Recording
+                    </button>
+                </div>
+
+                <!-- Navigation for Conversations -->
+                <div class="flex justify-between items-center mt-6">
+                    <button onclick="prevConversation()" class="p-3 rounded-xl font-semibold transition duration-150 bg-gray-300 text-gray-700 hover:bg-gray-400 ${window.currentConversationIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${window.currentConversationIndex === 0 ? 'disabled' : ''}>
+                        < Previous Topic
+                    </button>
+                    <button onclick="nextConversation()" class="p-3 rounded-xl font-semibold transition duration-150 bg-indigo-600 text-white hover:bg-indigo-700">
+                        Next Topic >
+                    </button>
+                </div>
+            `;
         };
 
         window.onload = () => {
@@ -520,12 +894,23 @@
 </head>
 <body class="min-h-screen p-4 sm:p-8">
 
-    <div id="notification-box" style="opacity: 0; position: fixed; top: 1rem; right: 1rem; z-index: 50;"></div>
+    <div id="notification-box" style="opacity: 0; transition: opacity 0.3s;"></div>
 
     <header class="max-w-xl mx-auto mb-8">
         <h1 class="text-4xl font-extrabold text-indigo-700">🇫🇷 French Companion</h1>
         <p id="user-id-display" class="text-sm text-gray-500 mt-1">Initializing...</p>
-        <p class="text-lg text-gray-600 mt-2">Interactive Flashcards for Beginners</p>
+        <div class="flex space-x-3 mt-4">
+            <button onclick="changeView('practice')" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md"
+                style="background-color: var(--color-practice); color: var(--color-practice-text);"
+                :class="{'bg-indigo-600 text-white': currentMode !== 'conversations', 'bg-white text-gray-700 border border-gray-300': currentMode === 'conversations'}">
+                Flashcards
+            </button>
+            <button onclick="changeView('conversations')" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md"
+                style="background-color: var(--color-conversations); color: var(--color-conversations-text);"
+                :class="{'bg-green-600 text-white': currentMode === 'conversations', 'bg-white text-gray-700 border border-gray-300': currentMode !== 'conversations'}">
+                Conversations
+            </button>
+        </div>
     </header>
 
     <!-- Loading State -->
@@ -537,39 +922,46 @@
     <!-- Main Content (Hidden until initialized) -->
     <main id="main-content" class="max-w-xl mx-auto" style="display: none;">
 
-        <!-- Mode Selector -->
-        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 p-4 bg-indigo-50 rounded-2xl shadow-inner">
-            <h2 class="text-lg font-semibold text-indigo-700 mb-2 sm:mb-0">Learning Mode: <span id="current-mode-display" class="capitalize font-extrabold text-indigo-900">Practice</span></h2>
-            <button id="btn-speed-review" onclick="startSpeedReview()" class="px-4 py-2 w-full sm:w-auto text-sm font-bold bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition duration-150 shadow-lg">
+        <!-- Mode Selector / Status Bar -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 p-4 bg-indigo-50 rounded-2xl shadow-inner">
+            <h2 class="text-lg font-semibold text-indigo-700 mb-2 sm:mb-0">Current Mode: <span id="current-mode-display" class="capitalize font-extrabold text-indigo-900">Practice</span></h2>
+            <button id="btn-start-review" onclick="startSpeedReview()" class="px-4 py-2 w-full sm:w-auto text-sm font-bold bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition duration-150 shadow-lg">
                 🚀 Start Speed Review
             </button>
         </div>
-        
-        <!-- Lesson Navigation (Practice Mode Only) -->
-        <div id="lesson-nav-container">
-            <nav id="lesson-nav" class="flex flex-wrap gap-3 mb-6 p-4 bg-white rounded-2xl shadow-md"></nav>
+
+        <!-- Conversation Practice View -->
+        <div id="conversation-container" class="hidden">
+            <!-- Content rendered by renderConversationPractice() -->
         </div>
-
-
-        <!-- Flashcard Area -->
-        <section class="bg-white rounded-3xl shadow-2xl overflow-hidden p-6 mb-6 lesson-card">
-            <div id="card-container" class="relative h-80">
-                <!-- Card content will be rendered here -->
+        
+        <!-- Flashcard View -->
+        <div id="flashcard-container">
+            <!-- Lesson Navigation (Practice Mode Only) -->
+            <div id="lesson-nav-container">
+                <nav id="lesson-nav" class="flex flex-wrap gap-3 mb-6 p-4 bg-white rounded-2xl shadow-md"></nav>
             </div>
-        </section>
 
-        <!-- Card Details and Navigation -->
-        <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
-            <div id="card-detail" class="mb-4 sm:mb-0">
-                <!-- Card details will be rendered here -->
-            </div>
-            <div class="flex space-x-3 w-full sm:w-auto">
-                <button id="btn-prev" onclick="prevCard()" class="flex-1">
-                    < Back
-                </button>
-                <button id="btn-next" onclick="nextCard()" class="flex-1">
-                    Next Card
-                </button>
+            <!-- Flashcard Area -->
+            <section class="bg-white rounded-3xl shadow-2xl overflow-hidden p-6 mb-6 lesson-card">
+                <div id="card-container" class="relative h-80">
+                    <!-- Card content will be rendered here -->
+                </div>
+            </section>
+
+            <!-- Card Details and Navigation -->
+            <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
+                <div id="card-detail" class="mb-4 sm:mb-0">
+                    <!-- Card details will be rendered here -->
+                </div>
+                <div class="flex space-x-3 w-full sm:w-auto">
+                    <button id="btn-prev" onclick="prevCard()" class="flex-1">
+                        < Back
+                    </button>
+                    <button id="btn-next" onclick="nextCard()" class="flex-1">
+                        Next Card
+                    </button>
+                </div>
             </div>
         </div>
 
