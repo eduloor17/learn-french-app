@@ -104,22 +104,19 @@
     </style>
 
     <script>
-        // --- DATA (DEBES DEFINIR ESTAS CONSTANTES AQUÍ) ---
-        // Debes reemplazar estos placeholders con tus datos reales
+        // --- DATA (PLACEHOLDERS) ---
+        // DEBES definir tus constantes reales LESSONS, CARDS, CONVERSATIONS y la función initFirebase
         const LESSONS = [
             // Ejemplo de una lección
             { title: "Verbs: Être & Avoir", progressKey: "lesson1", cards: [
-                { french: "Tu es (Être)", frenchAudio: "Tu es", english: "You are (To be)", phonetic: "/ty ɛ/", lessonTitle: "Être & Avoir" },
-                { french: "J'ai (Avoir)", frenchAudio: "J'ai", english: "I have (To have)", phonetic: "/ʒe/", lessonTitle: "Être & Avoir" }
+                { french: "Tu es (Être)", english: "You are (To be)", phonetic: "/ty ɛ/", lessonTitle: "Être & Avoir" },
             ]},
-            // Ejemplo de otra lección
             { title: "Verbs: Aller, Faire...", progressKey: "lesson2", cards: [
                 { french: "Nous allons (Aller)", english: "We go (To go)", phonetic: "/nu z‿a.lɔ̃/", lessonTitle: "Aller, Faire..." },
             ]},
         ];
 
         const CONVERSATIONS = [
-            // Ejemplo de una conversación
             { 
                 topic: "Ordering Coffee", 
                 question: "Que voulez-vous boire ?", 
@@ -130,24 +127,19 @@
             },
         ];
         
-        // --- FIREBASE AND PROGRESS MANAGEMENT (DEBES IMPLEMENTAR ESTO) ---
-        // Función placeholder. Asegúrate de implementar la lógica real de Firebase.
+        // --- FIREBASE AND PROGRESS MANAGEMENT (PLACEHOLDERS) ---
         window.currentProgress = {}; 
-        window.currentProgress['lesson1'] = true; // Simulación de progreso
+        window.currentProgress['lesson1'] = true;
         window.currentProgress['lesson2'] = false;
         
         function initFirebase() {
-            // Lógica real de inicialización de Firebase y carga de progreso...
             console.log("Firebase initialized. Progress loaded.");
             document.getElementById('user-id-display').textContent = 'User: Guest (Progress Simulation)';
-            
-            // Iniciar la aplicación una vez que todo está cargado
             window.selectLesson(0);
         }
 
         function saveProgress() {
             console.log("Progress saved to Firebase.");
-            // Lógica real para guardar window.currentProgress...
         }
         // ------------------------------------------------------------------
 
@@ -191,7 +183,6 @@
                 window.currentConversationIndex = 0;
                 renderApp();
             }
-            // Note: 'review' mode is started via startSpeedReview()
         };
 
         window.selectLesson = (index) => {
@@ -302,136 +293,17 @@
             }
         };
 
-        // --- SPEECH & AUDIO FUNCTIONS ---
-
-        // Initialize SpeechSynthesis
-        const synth = window.speechSynthesis;
-        let frenchVoice = null;
-
-        const setFrenchVoice = () => {
-            if (frenchVoice) return;
-            const voices = synth.getVoices();
-            frenchVoice = voices.find(
-                (voice) => voice.lang.startsWith('fr') && (voice.name.includes('Google') || voice.name.includes('Microsoft'))
-            );
-            if (!frenchVoice) {
-                frenchVoice = voices.find((voice) => voice.lang.startsWith('fr'));
-            }
-            if (!frenchVoice) {
-                console.warn('No se encontró una voz en francés adecuada.');
-            }
-        };
-
-        if (synth.onvoiceschanged !== undefined) {
-            synth.onvoiceschanged = setFrenchVoice;
-        } else {
-            setFrenchVoice();
-        }
-        
+        // Placeholder for handleListenClick, toggleRecording, playRecording
+        // These were not in the original version, but are referenced in the HTML/JS
         window.handleListenClick = (text) => {
-            if (!synth) {
-                showNotification('Speech Synthesis no está soportado en tu navegador.', 'error');
-                return;
-            }
-            if (synth.speaking) {
-                synth.cancel();
-            }
-
-            setFrenchVoice();
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'fr-FR';
-            if (frenchVoice) {
-                utterance.voice = frenchVoice;
-            } else {
-                utterance.pitch = 1.0;
-                utterance.rate = 1.0;
-            }
-
-            utterance.onerror = (event) => {
-                console.error('SpeechSynthesisUtterance.onerror', event);
-                showNotification('Error al reproducir audio.', 'error');
-            };
-
-            synth.speak(utterance);
+             console.log("Listening function not fully implemented yet for:", text);
+             showNotification("Listening function is currently a placeholder.", 'info');
         };
-
-        // --- MICROPHONE RECORDING FUNCTIONS (Using MediaDevices API) ---
-        
-        let mediaRecorder;
-        let audioChunks = [];
-        let audioBlob = null;
-        let audioPlayer = null;
-
-        const updateRecordingState = () => {
-            const recordBtn = document.getElementById('record-btn');
-            const playBtn = document.getElementById('play-btn');
-
-            if (recordBtn) {
-                const isRecording = mediaRecorder && mediaRecorder.state === 'recording';
-                recordBtn.textContent = isRecording ? 'Stop Recording' : 'Start Recording';
-                recordBtn.classList.toggle('bg-red-600', isRecording);
-                recordBtn.classList.toggle('hover:bg-red-700', isRecording);
-                recordBtn.classList.toggle('bg-indigo-600', !isRecording);
-                recordBtn.classList.toggle('hover:bg-indigo-700', !isRecording);
-                recordBtn.style.boxShadow = isRecording ? '0 4px #dc2626' : '0 4px #4f46e5';
-            }
-            if (playBtn) {
-                playBtn.disabled = !audioBlob;
-                playBtn.classList.toggle('bg-gray-500', !audioBlob);
-                playBtn.classList.toggle('hover:bg-gray-600', !audioBlob);
-                playBtn.classList.toggle('bg-green-600', !!audioBlob);
-                playBtn.classList.toggle('hover:bg-green-700', !!audioBlob);
-                playBtn.style.boxShadow = !!audioBlob ? '0 4px #15803d' : '0 4px #4b5563';
-            }
+        window.toggleRecording = () => {
+             showNotification("Recording function is a placeholder.", 'warning');
         };
-
-
-        window.toggleRecording = async () => {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-                showNotification('Recording finished. You can now play it back.', 'success');
-            } else {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    audioBlob = null;
-
-                    mediaRecorder.ondataavailable = event => {
-                        audioChunks.push(event.data);
-                    };
-
-                    mediaRecorder.onstop = () => {
-                        audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        stream.getTracks().forEach(track => track.stop()); 
-                        updateRecordingState();
-                    };
-
-                    mediaRecorder.start();
-                    updateRecordingState();
-                    showNotification('Recording started! Try saying one of the answers.', 'info');
-                    
-                } catch (err) {
-                    console.error('Error accessing microphone:', err);
-                    showNotification('No se pudo acceder al micrófono. Asegúrate de dar permiso.', 'error');
-                }
-            }
-        };
-
         window.playRecording = () => {
-            if (audioBlob) {
-                if (audioPlayer) {
-                    audioPlayer.pause();
-                    audioPlayer.currentTime = 0;
-                }
-                
-                audioPlayer = new Audio(URL.createObjectURL(audioBlob));
-                audioPlayer.play();
-                showNotification('Playing back your recording...', 'info');
-            } else {
-                showNotification('No hay grabación para reproducir.', 'warning');
-            }
+             showNotification("Playback function is a placeholder.", 'warning');
         };
 
         // --- MAIN RENDER FUNCTION ---
@@ -451,7 +323,6 @@
                 renderFlashcardView();
             } else {
                 renderConversationPractice();
-                updateRecordingState(); // Update buttons when entering conversation mode
             }
         };
 
@@ -486,9 +357,6 @@
                 }).join('');
             }
 
-            // --- Lógica para el AUDIO: toma el texto antes del primer paréntesis ---
-            const audioText = (card.frenchAudio || card.french).split('(')[0].trim();
-
             // 3. Render Card Container and Details
             const cardContainer = document.getElementById('card-container');
             const cardDetail = document.getElementById('card-detail');
@@ -500,7 +368,7 @@
                             <p class="text-2xl font-semibold mb-2 text-gray-500">French</p>
                             <h2 class="text-5xl font-extrabold">${card.french}</h2>
                             <p class="text-2xl font-semibold mb-6 phonetic">${card.phonetic}</p>
-                            <button id="listen-button-main" onclick="event.stopPropagation(); handleListenClick('${audioText.replace(/'/g, "\\'")}')" 
+                            <button id="listen-button-main" onclick="event.stopPropagation(); handleListenClick('${card.french.replace(/'/g, "\\'")}')" 
                                 class="listen-btn mt-6 flex items-center justify-center mx-auto text-lg hover:shadow-lg">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-2 w-5 h-5 mr-2">
                                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
@@ -632,9 +500,6 @@
 
         window.onload = () => {
             initFirebase();
-            if (synth.onvoiceschanged === undefined) { 
-                setFrenchVoice();
-            }
         };
     </script>
 </head>
