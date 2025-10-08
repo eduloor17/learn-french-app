@@ -132,38 +132,55 @@
                 { french: "Je ne comprends pas", english: "I do not understand", phonetic: "/zhuh nuh kom-pran pah/" },
                 { french: "Excusez-moi", english: "Excuse me / I'm sorry", phonetic: "/ex-koo-zay mwah/" },
             ]},
-            { id: 2, title: "Verbs: Être & Avoir", progressKey: "etre_avoir", cards: [
+            
+            // --- ID 2: VERBOS AMPLIADOS (CORE VERBS) ---
+            { id: 2, title: "Verbs: Être, Avoir, Aller, Faire, Vouloir & More", progressKey: "core_verbs", cards: [
+                // ÊTRE (To be)
                 { french: "Je suis", verbContext: "(Être)", english: "I am", phonetic: "/zhuh swee/", englishExample: "Je suis fatigué. (I am tired.)" }, 
                 { french: "Tu es", verbContext: "(Être)", english: "You are (informal)", phonetic: "/too eh/", englishExample: "Tu es étudiant. (You are a student.)" },
-                { french: "Il/Elle est", verbContext: "(Être)", english: "He/She is", phonetic: "/eel/el eh/", englishExample: "Il est grand. (He is tall.)" },
+                { french: "Il/Elle est", verbContext: "(Être)", english: "He/She is", phonetic: "/eel/el eh/", englishExample: "Elle est française. (She is French.)" },
                 { french: "Nous sommes", verbContext: "(Être)", english: "We are", phonetic: "/noo sum/", englishExample: "Nous sommes amis. (We are friends.)" },
-                { french: "Vous êtes", verbContext: "(Être)", english: "You are (formal/plural)", phonetic: "/voo zet/", englishExample: "Vous êtes ici. (You are here.)" }, 
-                { french: "Ils/Elles sont", verbContext: "(Être)", english: "They are", phonetic: "/eel/el son/", englishExample: "Elles sont jolies. (They are pretty.)" },
-                { french: "J'ai", verbContext: "(Avoir)", english: "I have", phonetic: "/zheh/", englishExample: "J'ai un chat. (I have a cat.)" },
-                { french: "Tu as", verbContext: "(Avoir)", english: "You have (informal)", phonetic: "/too ah/", englishExample: "Tu as faim. (You are hungry.)" },
-                { french: "Il/Elle a", verbContext: "(Avoir)", english: "He/She has", phonetic: "/eel/el ah/" },
-                { french: "Nous avons", verbContext: "(Avoir)", english: "We have", phonetic: "/noo za-von/" },
-                { french: "Vous avez", verbContext: "(Avoir)", english: "You have (formal/plural)", phonetic: "/voo za-vay/" },
-                { french: "Ils/Elles ont", verbContext: "(Avoir)", english: "They have", phonetic: "/eel/el zon/" },
-                { french: "J'ai soif", english: "I am thirsty (I have thirst)", phonetic: "/zheh swaf/" },
-                { french: "Nous avons une idée", english: "We have an idea", phonetic: "/noo za-von oon ee-day/" },
+                // AVOIR (To have)
+                { french: "J'ai", verbContext: "(Avoir)", english: "I have", phonetic: "/zheh/", englishExample: "J'ai vingt ans. (I am twenty years old.)" },
+                { french: "Tu as", verbContext: "(Avoir)", english: "You have (informal)", phonetic: "/too ah/", englishExample: "Tu as un chien. (You have a dog.)" },
+                { french: "Nous avons", verbContext: "(Avoir)", english: "We have", phonetic: "/noo za-von/", englishExample: "Nous avons faim. (We are hungry/have hunger.)" },
+                // ALLER (To go)
+                { french: "Je vais", verbContext: "(Aller)", english: "I go / I am going", phonetic: "/zhuh vay/", englishExample: "Je vais à la plage. (I'm going to the beach.)" }, 
+                { french: "Nous allons", verbContext: "(Aller)", english: "We go", phonetic: "/noo za-lon/", englishExample: "Nous allons manger. (We are going to eat.)" },
+                // FAIRE (To do / To make)
+                { french: "Je fais", verbContext: "(Faire)", english: "I do / I make", phonetic: "/zhuh fay/", englishExample: "Je fais du sport. (I do sports.)" }, 
+                { french: "Vous faites", verbContext: "(Faire)", english: "You do (formal/plural)", phonetic: "/voo fet/", englishExample: "Faites attention! (Pay attention!)" },
+                // VOULOIR (To want)
+                { french: "Je veux", verbContext: "(Vouloir)", english: "I want", phonetic: "/zhuh vuh/", englishExample: "Je veux un croissant. (I want a croissant.)" },
+                // NOUVOS VERBOS
+                // POUVOIR (Can / To be able to)
+                { french: "Je peux", verbContext: "(Pouvoir)", english: "I can / I am able to", phonetic: "/zhuh puh/", englishExample: "Je peux t'aider. (I can help you.)" },
+                { french: "Tu peux", verbContext: "(Pouvoir)", english: "You can (informal)", phonetic: "/too puh/", englishExample: "Où est-ce que tu peux aller? (Where can you go?)" },
+                { french: "Nous pouvons", verbContext: "(Pouvoir)", english: "We can", phonetic: "/noo poo-von/", englishExample: "Nous pouvons le faire. (We can do it.)" },
+                // DIRE (To say / To tell)
+                { french: "Je dis", verbContext: "(Dire)", english: "I say / I tell", phonetic: "/zhuh dee/", englishExample: "Je dis 'bonjour'. (I say 'hello'.)" },
+                { french: "Il dit", verbContext: "(Dire)", english: "He says / He tells", phonetic: "/eel dee/", englishExample: "Elle dit la vérité. (She tells the truth.)" },
+                // VOIR (To see)
+                { french: "Je vois", verbContext: "(Voir)", english: "I see", phonetic: "/zhuh vwah/", englishExample: "Je vois la montagne. (I see the mountain.)" },
+                { french: "Nous voyons", verbContext: "(Voir)", english: "We see", phonetic: "/noo vwa-yon/", englishExample: "Nous voyons le film. (We are watching the movie.)" },
             ]},
-            { id: 3, title: "Verbs: Aller, Faire, Vouloir", progressKey: "aller_faire_vouloir", cards: [
-                { french: "Je vais", verbContext: "(Aller)", english: "I go / I am going", phonetic: "/zhuh vay/", englishExample: "Je vais au magasin. (I'm going to the store.)" }, 
-                { french: "Tu vas", verbContext: "(Aller)", english: "You go (informal)", phonetic: "/too vah/" },
-                { french: "Nous allons", verbContext: "(Aller)", english: "We go", phonetic: "/noo za-lon/" },
-                { french: "Vous allez", verbContext: "(Aller)", english: "You go (formal/plural)", phonetic: "/voo za-lay/" },
-                { french: "Je fais", verbContext: "(Faire)", english: "I do / I make", phonetic: "/zhuh fay/", englishExample: "Je fais la cuisine. (I am cooking.)" }, 
-                { french: "Tu fais", verbContext: "(Faire)", english: "You do (informal)", phonetic: "/too fay/" },
-                { french: "Nous faisons", verbContext: "(Faire)", english: "We do / We make", phonetic: "/noo fuh-zon/" },
-                { french: "Vous faites", verbContext: "(Faire)", english: "You do (formal/plural)", phonetic: "/voo fet/" },
-                { french: "Je veux", verbContext: "(Vouloir)", english: "I want", phonetic: "/zhuh vuh/", englishExample: "Je veux de l'eau. (I want water.)" },
-                { french: "Tu veux", verbContext: "(Vouloir)", english: "You want (informal)", phonetic: "/too vuh/" },
-                { french: "Nous voulons", verbContext: "(Vouloir)", english: "We want", phonetic: "/noo voo-lon/" },
-                { french: "Vous voulez", verbContext: "(Vouloir)", english: "You want (formal/plural)", phonetic: "/voo voo-lay/" },
-                { french: "Je veux faire ça", english: "I want to do this", phonetic: "/zhuh vuh fer sah/" },
-                { french: "Où allez-vous ?", english: "Where are you going?", phonetic: "/oo a-lay voo/" },
+            
+            // --- ID 3: FRASES DE VIAJE Y SUPERVIVENCIA ---
+            { id: 3, title: "Survival Phrases & Travel", progressKey: "survival_phrases", cards: [
+                { french: "Parlez-vous anglais ?", english: "Do you speak English?", phonetic: "/par-lay voo zang-lay/", englishExample: "Je parle juste un peu. (I only speak a little.)" }, 
+                { french: "Où sont les toilettes ?", english: "Where is the restroom?", phonetic: "/oo son lay twa-let/", englishExample: "C'est par là. (It's over there.)" },
+                { french: "Quel est le prix ?", english: "What is the price?", phonetic: "/kel eh luh pree/", englishExample: "C'est cinquante euros. (It's fifty euros.)" },
+                { french: "J'aimerais payer.", english: "I would like to pay.", phonetic: "/zhem-ray pay-yay/", englishExample: "La note, s'il vous plaît. (The check, please.)" },
+                { french: "J'ai besoin d'aide.", english: "I need help.", phonetic: "/zheh buh-zwan ded/", englishExample: "Appelez un médecin! (Call a doctor!)" },
+                { french: "Je voudrais...", english: "I would like...", phonetic: "/zhuh voo-dray/", englishExample: "Je voudrais un café. (I would like a coffee.)" },
+                { french: "Une table pour deux.", english: "A table for two.", phonetic: "/oon tabl poor duh/" },
+                { french: "C'est délicieux.", english: "It is delicious.", phonetic: "/say day-lee-syeuh/" },
+                { french: "Je suis désolé(e).", english: "I am sorry (m/f).", phonetic: "/zhuh swee day-zo-lay/" },
+                { french: "À droite / À gauche", english: "To the right / To the left", phonetic: "/a drwat / a gosh/" },
+                { french: "Tout droit", english: "Straight ahead", phonetic: "/too drwah/" },
             ]},
+        
+            // --- ID 4: NUMBERS ---
             { id: 4, title: "Numbers (0-100)", progressKey: "numbers_0_100", cards: [
                 { french: "Zéro", english: "Zero", phonetic: "/ze-roh/" }, { french: "Un", english: "One", phonetic: "/uh/" }, { french: "Deux", english: "Two", phonetic: "/duh/" },
                 { french: "Trois", english: "Three", phonetic: "/trwah/" }, { french: "Dix", english: "Ten", phonetic: "/dees/" }, { french: "Vingt", english: "Twenty", phonetic: "/vant/" },
@@ -177,6 +194,8 @@
                 { french: "J'ai soixante-douze ans", english: "I am seventy-two years old", phonetic: "/zheh swa-sant-dooz ahn/" }, 
                 { french: "Le prix est quatre-vingt-neuf", english: "The price is eighty-nine", phonetic: "/luh pree eh katr-vant-nuf/" },
             ]},
+        
+            // --- ID 5: ANIMALS ---
             { id: 5, title: "60 Common Animals", progressKey: "animals_60", cards: [
                 { french: "Le chien", english: "Dog", phonetic: "/luh shyen/" }, { french: "Le chat", english: "Cat", phonetic: "/luh shah/" },
                 { french: "Le cheval", english: "Horse", phonetic: "/luh shuh-val/" }, { french: "La vache", english: "Cow", phonetic: "/la vash/" },
@@ -185,7 +204,7 @@
                 { french: "Le canard", english: "Duck", phonetic: "/luh ka-nar/" }, { french: "La poule", english: "Chicken (hen)", phonetic: "/la pool/" },
                 { french: "Le dindon", english: "Turkey", phonetic: "/luh dan-don/" }, { french: "L'oie (f)", english: "Goose", phonetic: "/lwa/" },
                 { french: "Le poisson", english: "Fish", phonetic: "/luh pwa-son/" }, { french: "L'oiseau (m)", english: "Bird", phonetic: "/lwa-zoh/" },
-                { french: "Le lion", english: "Lion", phonetic: "/luh lee-on/" }, { french: "Le tigre", english: "Tiger", phonetic: "/luh tee-gr/" },
+                { french: "Le lion", english: "Lion", phonetic: "/luh lee-on/" }, { french: "Le tigre", phonetic: "/luh tee-gr/" },
                 { french: "L'éléphant (m)", english: "Elephant", phonetic: "/lay-lay-fan/" }, { french: "La girafe", english: "Giraffe", phonetic: "/la zhee-raf/" },
                 { french: "Le singe", english: "Monkey", phonetic: "/luh sanj/" }, { french: "L'ours (m)", english: "Bear", phonetic: "/loors/" },
                 { french: "Le loup", english: "Wolf", phonetic: "/luh loo/" }, { french: "Le renard", english: "Fox", phonetic: "/luh ruh-nar/" },
@@ -211,14 +230,50 @@
                 { french: "Le castor", english: "Beaver", phonetic: "/luh kas-tor/" }, { french: "La marmotte", english: "Groundhog/Marmot", phonetic: "/la mar-mot/" },
                 { french: "Le dromadaire", english: "Dromedary (camel)", phonetic: "/luh dro-ma-der/" }, { french: "Le kangourou", english: "Kangaroo", phonetic: "/luh kahn-goo-roo/" },
             ]},
+        
+            // --- ID 6: COLORES Y ADJETIVOS AMPLIADOS ---
             { id: 6, title: "Colors & Adjectives", progressKey: "colors_adj", cards: [
-                { french: "Rouge", english: "Red", phonetic: "/roozh/" }, { french: "Bleu / Bleue", english: "Blue (m/f)", phonetic: "/bluh/" }, 
-                { french: "Vert / Verte", english: "Green (m/f)", phonetic: "/ver / vert/" }, { french: "Jaune", english: "Yellow (m/f same)", phonetic: "/zhon/" }, 
-                { french: "Noir / Noire", english: "Black (m/f)", phonetic: "/nwar / nwar/" }, { french: "Blanc / Blanche", english: "White (m/f)", phonetic: "/blan / blansh/" },
-                { french: "Grand / Grande", english: "Tall / Big (m/f)", phonetic: "/grahn / grahnd/" }, { french: "Petit / Petite", english: "Small / Short (m/f)", phonetic: "/puh-tee / puh-teet/" },
-                { french: "Bon / Bonne", english: "Good (m/f)", phonetic: "/bon / bun/" }, { french: "Mauvais / Mauvaise", english: "Bad (m/f)", phonetic: "/mo-veh / mo-vez/" },
-                { french: "Beau / Belle", english: "Beautiful (m/f)", phonetic: "/boh / bel/" }, { french: "Facile", english: "Easy (m/f same)", phonetic: "/fah-seel/" }, 
-                { french: "Difficile", english: "Difficult (m/f same)", phonetic: "/dee-fee-seel/" }, { french: "Rapide", english: "Fast / Quick (m/f same)", phonetic: "/ra-peed/" },
+                // Colores ampliados
+                { french: "Rouge", english: "Red", phonetic: "/roozh/" }, 
+                { french: "Bleu / Bleue", english: "Blue (m/f)", phonetic: "/bluh/", englishExample: "J'aime le ciel bleu. (I like the blue sky.)" }, 
+                { french: "Vert / Verte", english: "Green (m/f)", phonetic: "/ver / vert/" }, 
+                { french: "Jaune", english: "Yellow (m/f same)", phonetic: "/zhon/" }, 
+                { french: "Noir / Noire", english: "Black (m/f)", phonetic: "/nwar / nwar/" }, 
+                { french: "Blanc / Blanche", english: "White (m/f)", phonetic: "/blan / blansh/" },
+                { french: "Marron", english: "Brown (m/f same)", phonetic: "/ma-ron/" }, 
+                { french: "Gris / Grise", english: "Gray (m/f)", phonetic: "/gree / greez/" },
+                { french: "Violet / Violette", english: "Purple (m/f)", phonetic: "/vee-oh-lay / vee-oh-let/" },
+                { french: "Orange", english: "Orange (m/f same)", phonetic: "/o-ronzh/" },
+                
+                // Adjetivos ampliados
+                { french: "Grand / Grande", english: "Tall / Big (m/f)", phonetic: "/grahn / grahnd/" }, 
+                { french: "Petit / Petite", english: "Small / Short (m/f)", phonetic: "/puh-tee / puh-teet/" },
+                { french: "Bon / Bonne", english: "Good (m/f)", phonetic: "/bon / bun/", englishExample: "C'est une bonne idée. (It's a good idea.)" }, 
+                { french: "Mauvais / Mauvaise", english: "Bad (m/f)", phonetic: "/mo-veh / mo-vez/" },
+                { french: "Beau / Belle", english: "Beautiful (m/f)", phonetic: "/boh / bel/", englishExample: "La tour est belle. (The tower is beautiful.)" }, 
+                { french: "Intéressant / Intéressante", english: "Interesting (m/f)", phonetic: "/an-tay-ray-san / an-tay-ray-sant/", englishExample: "C'est un film intéressant. (It is an interesting film.)" },
+                { french: "Nouveau / Nouvelle", english: "New (m/f)", phonetic: "/noo-voh / noo-vel/" },
+                { french: "Vieux / Vieille", english: "Old (m/f)", phonetic: "/vyuh / vyey/" },
+                { french: "Cher / Chère", english: "Expensive (m/f)", phonetic: "/sher / sher/" },
+                { french: "Content / Contente", english: "Happy (m/f)", phonetic: "/kon-ton / kon-tont/" },
+            ]},
+            
+            // --- ID 7: COMIDA Y BEBIDA ---
+            { id: 7, title: "Food & Drink", progressKey: "food_drink", cards: [
+                { french: "Le pain", english: "Bread", phonetic: "/luh pan/", englishExample: "Je voudrais du pain. (I would like some bread.)" },
+                { french: "L'eau (f)", english: "Water", phonetic: "/loh/", englishExample: "Un verre d'eau, s'il vous plaît. (A glass of water, please.)" },
+                { french: "Le café", english: "Coffee", phonetic: "/luh ka-fay/" },
+                { french: "Le thé", english: "Tea", phonetic: "/luh tay/" },
+                { french: "Le vin", english: "Wine", phonetic: "/luh van/" },
+                { french: "Le fromage", english: "Cheese", phonetic: "/luh fro-mazh/" },
+                { french: "La viande", english: "Meat", phonetic: "/la vyand/" },
+                { french: "Le poisson", english: "Fish", phonetic: "/luh pwa-son/" },
+                { french: "Le légume", english: "Vegetable", phonetic: "/luh lay-goom/" },
+                { french: "Le fruit", english: "Fruit", phonetic: "/luh frwee/" },
+                { french: "Le dessert", english: "Dessert", phonetic: "/luh day-ser/" },
+                { french: "Le petit déjeuner", english: "Breakfast", phonetic: "/luh puh-tee day-zhuh-nay/" },
+                { french: "Le déjeuner", english: "Lunch", phonetic: "/luh day-zhuh-nay/" },
+                { french: "Le dîner", english: "Dinner", phonetic: "/luh dee-nay/" },
             ]},
         ];
         
