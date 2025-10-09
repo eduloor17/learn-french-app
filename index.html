@@ -982,6 +982,8 @@
 
         // --- VOICE RECORDING LOGIC (UNCHANGED) ---
 
+        // --- VOICE RECORDING LOGIC (UPDATED FOR iOS COMPATIBILITY) ---
+
         window.toggleRecording = async () => {
             const recordBtn = document.getElementById('record-btn');
             const playBtn = document.getElementById('play-btn');
@@ -990,21 +992,40 @@
                 showNotification("Microphone access not supported in this browser/environment.", 'error');
                 return;
             }
-
+        
             if (!isRecording) {
                 // Start recording
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
+                    
+                    // ------------------------------------------------------------------
+                    // *** 1. CHANGE HERE: Hint the MediaRecorder to use 'audio/wav' ***
+                    // ------------------------------------------------------------------
+                    const options = { mimeType: 'audio/wav' };
+                    
+                    // Check if the browser supports WAV recording. If not, MediaRecorder will 
+                    // likely fall back to a default, but this improves chances on iOS.
+                    if (!MediaRecorder.isTypeSupported('audio/wav')) {
+                        // If WAV is not supported, try the default webm or just leave options empty
+                        console.warn('audio/wav not fully supported by MediaRecorder. Falling back to default.');
+                        // Forcing WebM back in this case: const options = { mimeType: 'audio/webm' };
+                        // Or leave options empty for default: const options = {};
+                    }
+                    
+                    mediaRecorder = new MediaRecorder(stream, options);
                     audioChunks = [];
                     recordedAudioBlob = null;
-
+        
                     mediaRecorder.ondataavailable = event => {
                         audioChunks.push(event.data);
                     };
-
+        
                     mediaRecorder.onstop = () => {
-                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        // ---------------------------------------------------------------
+                        // *** 2. CHANGE HERE: Set the final Blob type to 'audio/wav' ***
+                        // ---------------------------------------------------------------
+                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        
                         // Cleanup stream tracks
                         stream.getTracks().forEach(track => track.stop());
                         recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg> Start Recording`;
@@ -1013,14 +1034,14 @@
                         isRecording = false;
                         showNotification("Recording finished. Click 'Play My Recording' to listen.", 'info');
                     };
-
+        
                     mediaRecorder.start();
                     isRecording = true;
                     playBtn.disabled = true; // Disable playback while recording
                     recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="5"/></svg> Stop Recording`;
                     recordBtn.classList.add('record-btn-active');
                     showNotification("Recording started...", 'info');
-
+        
                 } catch (err) {
                     console.error('Recording failed:', err);
                     showNotification(`Error accessing microphone: ${err.name}.`, 'error');
@@ -1030,7 +1051,7 @@
                 mediaRecorder.stop();
             }
         };
-
+        
         window.playRecording = () => {
             if (recordedAudioBlob) {
                 const audioUrl = URL.createObjectURL(recordedAudioBlob);
