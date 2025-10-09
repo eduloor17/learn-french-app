@@ -1376,11 +1376,10 @@
                 </div>
             `;
         };
-
         // --- Helper Functions for 'Pick Mode'
 
         window.currentPickGuess = ''; // Global variable to hold the letter guess
-
+        
         window.appendLetter = (letter) => {
             if (window.wordGuessState.isGameOver) return;
             
@@ -1394,7 +1393,7 @@
             if (guessDisplay) {
                 // Format the guess to show blanks for remaining letters
                 let formattedGuess = window.currentPickGuess.split('').join(' ');
-                const blanks = Array(window.wordGuessState.targetLength - window.currentPickGuess.length).fill('\_').join(' ');
+                const blanks = Array(window.wordGuessState.targetLength - window.currentPickGuess.length).fill('_').join(' ');
                 guessDisplay.textContent = formattedGuess + (blanks ? ' ' + blanks : '');
             }
         };
@@ -1405,19 +1404,19 @@
             // Reset the display div
             const guessDisplay = document.getElementById('current-pick-guess');
             if (guessDisplay) {
-                guessDisplay.textContent = Array(window.wordGuessState.targetLength).fill('\_').join(' ');
+                guessDisplay.textContent = Array(window.wordGuessState.targetLength).fill('_').join(' ');
             }
         };
         
         // --- FINISH GUESS MODE
-
+        
         // --- FLASHCARD MODE FUNCTIONS ---
-
+        
         window.startSpeedReview = () => {
             window.currentMode = 'review';
             let reviewCards = [];
             LESSONS.forEach(lesson => {
-                const multiplier = window.currentProgress[lesson.progressKey] ? 1 : 3; 
+                const multiplier = window.currentProgress[lesson.progressKey] ? 1 : 3;
                 for (let i = 0; i < multiplier; i++) {
                     lesson.cards.forEach(card => {
                         reviewCards.push({...card, lessonTitle: lesson.title});
@@ -1434,7 +1433,7 @@
             showNotification(`Starting Speed Review Mode with ${reviewCards.length} cards!`);
             renderApp();
         };
-
+        
         window.selectLesson = (index) => {
             window.currentMode = 'practice';
             window.currentLessonIndex = index;
@@ -1443,7 +1442,7 @@
             window.activeCardList = LESSONS[index].cards;
             renderApp();
         };
-
+        
         window.flipCard = () => {
             if (window.currentMode === 'conversations') return; // Do not flip in conversation mode
             window.isFlipped = !window.isFlipped;
@@ -1452,7 +1451,7 @@
                 flipContainer.classList.toggle('flipped', window.isFlipped);
             }
         };
-
+        
         window.nextCard = () => {
             const list = window.activeCardList;
             if (window.currentCardIndex < list.length - 1) {
@@ -1475,7 +1474,7 @@
                 }
             }
         };
-
+        
         window.prevCard = () => {
             if (window.currentCardIndex > 0) {
                 window.currentCardIndex--;
@@ -1483,14 +1482,14 @@
                 renderApp();
             }
         };
-
+        
         const markLessonComplete = (key) => {
             if (!window.currentProgress[key]) {
                 window.currentProgress[key] = true;
                 saveProgress();
             }
         };
-
+        
         // --- CONVERSATION MODE FUNCTIONS ---
         
         window.nextConversation = () => {
@@ -1503,14 +1502,14 @@
                 renderApp();
             }
         };
-
+        
         window.prevConversation = () => {
             if (window.currentConversationIndex > 0) {
                 window.currentConversationIndex--;
                 renderApp();
             }
         };
-
+        
         // --- MAIN RENDER FUNCTION ---
         const renderApp = () => {
             document.getElementById('loading-state').style.display = 'none';
@@ -1523,11 +1522,11 @@
             const lessonNavContainer = document.getElementById('lesson-nav-container');
         
             // --- Set container visibility using the new window.currentView ---
-            
+        
             // 1. Manage Main Containers
             flashcardContainer.style.display = (window.currentView === 'flashcard') ? 'block' : 'none';
             conversationContainer.style.display = (window.currentView === 'conversations') ? 'block' : 'none';
-            
+        
             if (wordGuessContainer) {
                 wordGuessContainer.style.display = (window.currentView === 'wordGuess') ? 'block' : 'none';
             }
@@ -1547,7 +1546,7 @@
                 modeDisplayText = 'Guess Word';
             }
             document.getElementById('current-mode-display').textContent = modeDisplayText;
-            
+        
             // Manage Speed Review button visibility
             document.getElementById('btn-start-review').style.display = (window.currentMode === 'practice') ? 'block' : 'none';
         
@@ -1559,9 +1558,19 @@
                 renderConversationPractice();
             } else if (window.currentView === 'wordGuess') {
                 // renderWordGuessView handles content population for the game
-                renderWordGuessView(); 
+                renderWordGuessView();
             }
         };
+        
+        
+        // ----------------------------------------------------
+        // *** ADDED: RENDER FLASHCARD VIEW FUNCTION BLOCK ***
+        // ----------------------------------------------------
+        const renderFlashcardView = () => {
+            // These must be defined before use in the logic below:
+            const card = window.activeCardList[window.currentCardIndex];
+            const list = window.activeCardList;
+            const isReviewMode = window.currentMode === 'review';
         
             // --- Lógica para el AUDIO: Lee SOLO la parte principal (card.french) ---
             const audioText = card.french.split('(')[0].trim();
@@ -1570,7 +1579,7 @@
             // 3. Render Card Container and Details
             const cardContainer = document.getElementById('card-container');
             const cardDetail = document.getElementById('card-detail');
-            
+        
             // RENDER THE MAIN CARD CONTENT FIRST
             cardContainer.innerHTML = `
                 <div id="flip-container" class="flip-container h-80 w-full" onclick="flipCard()">
@@ -1633,7 +1642,7 @@
             // --------------------------------------------------------------------------------
             // END MOVED BLOCK
             // --------------------------------------------------------------------------------
-                    
+                            
             // 4. Render Card Details and Navigation
             const totalCards = list.length;
             const currentCardNumber = window.currentCardIndex + 1;
@@ -1666,7 +1675,10 @@
             }
             btnPrev.className = `p-3 rounded-xl font-semibold transition duration-150 ${window.currentCardIndex === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'}`;
         };
-        
+        // ----------------------------------------------------
+        // *** END of RENDER FLASHCARD VIEW FUNCTION BLOCK ***
+        // ----------------------------------------------------
+                
         const renderConversationPractice = () => {
             const currentConv = CONVERSATIONS[window.currentConversationIndex];
             const convContainer = document.getElementById('conversation-container');
@@ -1747,10 +1759,11 @@
                 </div>
             `;
         };
-        
+                
         window.onload = () => {
             initFirebase();
         };
+        //HERE
     </script>
 </head>
 <body class="min-h-screen p-4 sm:p-8">
