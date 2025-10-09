@@ -980,9 +980,7 @@
             }
         };
 
-        // --- VOICE RECORDING LOGIC (UNCHANGED) ---
-
-        // --- VOICE RECORDING LOGIC (UPDATED FOR iOS COMPATIBILITY) ---
+        // --- VOICE RECORDING LOGIC (OPTIMIZED FOR BROWSER DEFAULTS) ---
 
         window.toggleRecording = async () => {
             const recordBtn = document.getElementById('record-btn');
@@ -998,21 +996,11 @@
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     
-                    // ------------------------------------------------------------------
-                    // *** 1. CHANGE HERE: Hint the MediaRecorder to use 'audio/wav' ***
-                    // ------------------------------------------------------------------
-                    const options = { mimeType: 'audio/wav' };
-                    
-                    // Check if the browser supports WAV recording. If not, MediaRecorder will 
-                    // likely fall back to a default, but this improves chances on iOS.
-                    if (!MediaRecorder.isTypeSupported('audio/wav')) {
-                        // If WAV is not supported, try the default webm or just leave options empty
-                        console.warn('audio/wav not fully supported by MediaRecorder. Falling back to default.');
-                        // Forcing WebM back in this case: const options = { mimeType: 'audio/webm' };
-                        // Or leave options empty for default: const options = {};
-                    }
-                    
-                    mediaRecorder = new MediaRecorder(stream, options);
+                    // ----------------------------------------------------------------------
+                    // *** CHANGE: Removing the incompatible 'audio/wav' options object. ***
+                    // We let the browser choose the default (usually 'audio/webm;codecs=opus').
+                    // ----------------------------------------------------------------------
+                    mediaRecorder = new MediaRecorder(stream); // No options needed
                     audioChunks = [];
                     recordedAudioBlob = null;
         
@@ -1021,10 +1009,11 @@
                     };
         
                     mediaRecorder.onstop = () => {
-                        // ---------------------------------------------------------------
-                        // *** 2. CHANGE HERE: Set the final Blob type to 'audio/wav' ***
-                        // ---------------------------------------------------------------
-                        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        // ----------------------------------------------------------------------
+                        // *** CHANGE: Using the MediaRecorder's own MIME type for the Blob. ***
+                        // This is the most reliable way to create a playable Blob.
+                        // ----------------------------------------------------------------------
+                        recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
                         
                         // Cleanup stream tracks
                         stream.getTracks().forEach(track => track.stop());
