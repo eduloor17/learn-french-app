@@ -1398,7 +1398,7 @@
             
             convContainer.classList.remove('hidden');
             document.getElementById('current-mode-display').textContent = 'Conversations';
-
+        
             // Main Conversation Card
             convContainer.innerHTML = `
                 <div class="bg-white rounded-3xl shadow-2xl p-6 mb-6">
@@ -1406,11 +1406,13 @@
                         <p class="text-xl font-bold text-indigo-600">Topic: ${currentConv.topic}</p>
                         <p class="text-sm text-gray-500">Scenario ${window.currentConversationIndex + 1} of ${totalConvs}</p>
                     </div>
-
-                    <!-- Question Block -->
+        
                     <div class="mt-6 p-4 bg-indigo-50 rounded-xl border border-indigo-200 shadow-inner">
                         <p class="text-sm font-semibold text-indigo-700 mb-2">Question:</p>
                         <h3 class="text-3xl font-extrabold text-indigo-900 mb-2">${currentConv.question}</h3>
+                        
+                        <p class="text-xl italic text-indigo-700 font-medium mb-3">${currentConv.englishQuestion}</p>
+                        
                         <p class="text-lg font-semibold phonetic">${currentConv.answers[0].phonetic.split('/').slice(0, 2).join('/').replace(',', '')}...</p>
                         <button id="listen-button-q" onclick="handleListenClick('${currentConv.question.replace(/'/g, "\\'")}')" 
                             class="listen-btn mt-3 flex items-center justify-center text-sm">
@@ -1418,12 +1420,14 @@
                             Listen Question
                         </button>
                     </div>
-
+        
                     <h4 class="text-xl font-bold text-gray-700 mt-8 mb-4">Choose and Practice Your Answer:</h4>
                     
-                    <!-- Answer Block 1 -->
                     <div class="p-4 bg-white rounded-xl border border-gray-300 shadow-lg mb-4">
                         <p class="text-2xl font-medium text-gray-800">${currentConv.answers[0].text}</p>
+                        
+                        <p class="text-base italic text-gray-500 mb-2">${currentConv.answers[0].englishText}</p>
+                        
                         <p class="text-sm font-semibold phonetic mb-3">${currentConv.answers[0].phonetic}</p>
                         <button id="listen-button-a1" onclick="handleListenClick('${currentConv.answers[0].text.replace(/'/g, "\\'")}')" 
                             class="listen-btn flex items-center justify-center text-sm px-3 py-1">
@@ -1431,10 +1435,12 @@
                             Listen Sample
                         </button>
                     </div>
-
-                    <!-- Answer Block 2 -->
+        
                     <div class="p-4 bg-white rounded-xl border border-gray-300 shadow-lg">
                         <p class="text-2xl font-medium text-gray-800">${currentConv.answers[1].text}</p>
+                        
+                        <p class="text-base italic text-gray-500 mb-2">${currentConv.answers[1].englishText}</p>
+                        
                         <p class="text-sm font-semibold phonetic mb-3">${currentConv.answers[1].phonetic}</p>
                         <button id="listen-button-a2" onclick="handleListenClick('${currentConv.answers[1].text.replace(/'/g, "\\'")}')" 
                             class="listen-btn flex items-center justify-center text-sm px-3 py-1">
@@ -1443,8 +1449,7 @@
                         </button>
                     </div>
                 </div>
-
-                <!-- Recording Controls -->
+        
                 <div class="flex justify-center space-x-4 p-4 bg-indigo-100 rounded-2xl shadow-inner">
                     <button id="record-btn" onclick="toggleRecording()" class="action-btn flex items-center text-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
@@ -1455,8 +1460,7 @@
                         Play My Recording
                     </button>
                 </div>
-
-                <!-- Navigation for Conversations -->
+        
                 <div class="flex justify-between items-center mt-6">
                     <button onclick="prevConversation()" class="p-3 rounded-xl font-semibold transition duration-150 bg-gray-300 text-gray-700 hover:bg-gray-400 ${window.currentConversationIndex === 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${window.currentConversationIndex === 0 ? 'disabled' : ''}>
                         < Previous Topic
@@ -1467,7 +1471,7 @@
                 </div>
             `;
         };
-
+        
         window.onload = () => {
             initFirebase();
         };
