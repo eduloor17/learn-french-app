@@ -780,6 +780,7 @@
         ];
         
         const CONVERSATIONS = [
+            // SCENARIOS 1-10 (Your Existing Scenarios)
             { topic: "At the Café", question: "Qu'est-ce que vous prendrez ?", 
               answers: [{ text: "Je voudrais un café, s'il vous plaît.", phonetic: "/zhuh voo-dray uh ka-fay, seel voo play/" },
                         { text: "Je vais prendre un thé vert.", phonetic: "/zhuh vay pron-dr uh tay ver/" }]
@@ -792,11 +793,11 @@
               answers: [{ text: "Je m'appelle Thomas, et vous ?", phonetic: "/zhuh ma-pel Toh-mah, ay voo/" },
                         { text: "Je suis Marie. Enchantée.", phonetic: "/zhuh swee Mah-ree. Ahn-shahn-tay/" }]
             },
-            { topic: "Shopping", question: "Combien coûte cette écharpe ?", 
+            { topic: "Shopping (Price)", question: "Combien coûte cette écharpe ?", 
               answers: [{ text: "Elle coûte vingt-cinq euros.", phonetic: "/el koot van-sank eu-roh/" },
                         { text: "C'est trop cher, merci.", phonetic: "/seh tro sher, mer-see/" }]
             },
-            { topic: "Ordering Food", question: "Voulez-vous un dessert ?", 
+            { topic: "Ordering Food (Dessert)", question: "Voulez-vous un dessert ?", 
               answers: [{ text: "Oui, je prendrai une tarte au chocolat.", phonetic: "/wee, zhuh pron-dray oon tart oh sho-ko-lah/" },
                         { text: "Non merci, juste l'addition.", phonetic: "/non mer-see, joost la-dee-see-on/" }]
             },
@@ -820,8 +821,50 @@
               answers: [{ text: "Non, c'est tout pour moi, merci.", phonetic: "/non, seh too poor mwah, mer-see/" },
                         { text: "Oui, deux croissants s'il vous plaît.", phonetic: "/wee, duh krwa-son seel voo play/" }]
             },
+        
+            // SCENARIOS 11-20 (The 10 New Scenarios)
+            { topic: "Inviting a Friend (Informal)", question: "Tu veux aller au cinéma ?", 
+              answers: [{ text: "Oui, bonne idée ! Quel film ?", phonetic: "/wee, bun ee-day ! kel feelm/" },
+                        { text: "Non, je ne peux pas, je suis fatigué.", phonetic: "/non, zhuh nuh puh pah, zhuh swee fa-tee-gay/" }]
+            },
+            { topic: "Asking for Help", question: "Pouvez-vous m'aider, s'il vous plaît ?", 
+              answers: [{ text: "Bien sûr, quel est le problème ?", phonetic: "/byan sur, kel eh luh pro-blem/" },
+                        { text: "Désolé, je suis pressé.", phonetic: "/day-zo-lay, zhuh swee preh-say/" }]
+            },
+            { topic: "In the Classroom", question: "Comment dit-on 'table' en français ?", 
+              answers: [{ text: "On dit 'la table'.", phonetic: "/on dee la tabl/" },
+                        { text: "Je ne me souviens plus.", phonetic: "/zhuh nuh muh soo-vyan ploo/" }]
+            },
+            { topic: "Emergency / Problem", question: "Où est le médecin le plus proche ?", 
+              answers: [{ text: "L'hôpital est juste à côté.", phonetic: "/lo-pee-tal eh joost a koh-tay/" },
+                        { text: "Il y a une pharmacie là-bas.", phonetic: "/eel ee ah oon far-ma-see la-ba/" }]
+            },
+            { topic: "Family Talk", question: "Combien de frères et sœurs avez-vous ?", 
+              answers: [{ text: "J'ai un frère et deux sœurs.", phonetic: "/zheh uhn frer ay duh sur/" },
+                        { text: "Je suis fils unique.", phonetic: "/zhuh swee feess oo-neek/" }]
+            },
+            { topic: "Work/Job", question: "Quel est votre métier ?", 
+              answers: [{ text: "Je suis ingénieur.", phonetic: "/zhuh sweez an-zhay-nyur/" },
+                        { text: "Je suis au chômage pour l'instant.", phonetic: "/zhuh sweez oh sho-mazh poor lan-stan/" }]
+            },
+            { topic: "Asking for an Opinion", question: "Que pensez-vous de ce film ?", 
+              answers: [{ text: "J'ai trouvé ça très intéressant.", phonetic: "/zheh troo-vay sa tray an-tay-reh-san/" },
+                        { text: "Je n'ai pas aimé du tout.", phonetic: "/zhuh neh pah zay-may doo too/" }]
+            },
+            { topic: "Buying a Ticket (Travel)", question: "Un aller simple ou un aller-retour ?", 
+              answers: [{ text: "Un aller-retour, s'il vous plaît.", phonetic: "/uhn a-lay ruh-toor, seel voo play/" },
+                        { text: "Un aller simple, pour demain.", phonetic: "/uhn a-lay sanpl, poor duh-man/" }]
+            },
+            { topic: "Apologizing", question: "Excusez-moi, je suis en retard.", 
+              answers: [{ text: "Ce n'est pas grave, entrez.", phonetic: "/su neh pah grav, an-tray/" },
+                        { text: "Ce n'est pas un problème.", phonetic: "/su neh pah zuhn pro-blem/" }]
+            },
+            { topic: "Telling Time", question: "Il est quelle heure maintenant ?", 
+              answers: [{ text: "Il est midi et quart.", phonetic: "/eel eh mee-dee ay kar/" },
+                        { text: "Il est cinq heures moins le quart.", phonetic: "/eel eh sank ur mwan luh kar/" }]
+            },
         ];
-
+        
         window.LESSONS = LESSONS;
         window.CONVERSATIONS = CONVERSATIONS;
         
