@@ -980,27 +980,34 @@
             }
         };
 
-        // --- VOICE RECORDING LOGIC (OPTIMIZED FOR BROWSER DEFAULTS) ---
-
+        // --- UPDATED TOGGLE RECORDING FUNCTION ---
         window.toggleRecording = async () => {
-            const recordBtn = document.getElementById('record-btn');
-            const playBtn = document.getElementById('play-btn');
+            // -------------------------------------------------------------------------
+            // *** CRITICAL CHANGE: UNIVERSAL BUTTON FINDER ***
+            // This finds the record button rendered in either the conversation view (old ID)
+            // OR the flashcard view (new ID). Do the same for the play button.
+            // -------------------------------------------------------------------------
+            const recordBtn = document.getElementById('record-btn') || document.getElementById('record-btn-flashcard');
+            const playBtn = document.getElementById('play-btn') || document.getElementById('play-btn-flashcard');
             
+            // Safety check: if no buttons are found (i.e., we are in a different view), exit safely.
+            if (!recordBtn || !playBtn) {
+                return; 
+            }
+            // -------------------------------------------------------------------------
+                    
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 showNotification("Microphone access not supported in this browser/environment.", 'error');
                 return;
             }
-        
+            
             if (!isRecording) {
                 // Start recording
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     
-                    // ----------------------------------------------------------------------
-                    // *** CHANGE: Removing the incompatible 'audio/wav' options object. ***
-                    // We let the browser choose the default (usually 'audio/webm;codecs=opus').
-                    // ----------------------------------------------------------------------
-                    mediaRecorder = new MediaRecorder(stream); // No options needed
+                    // Reverted to browser default format (usually webm/opus) for compatibility
+                    mediaRecorder = new MediaRecorder(stream);
                     audioChunks = [];
                     recordedAudioBlob = null;
         
@@ -1009,14 +1016,12 @@
                     };
         
                     mediaRecorder.onstop = () => {
-                        // ----------------------------------------------------------------------
-                        // *** CHANGE: Using the MediaRecorder's own MIME type for the Blob. ***
-                        // This is the most reliable way to create a playable Blob.
-                        // ----------------------------------------------------------------------
                         recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
                         
                         // Cleanup stream tracks
                         stream.getTracks().forEach(track => track.stop());
+                        
+                        // IMPORTANT: The variables recordBtn and playBtn now point to the correct element
                         recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg> Start Recording`;
                         recordBtn.classList.remove('record-btn-active');
                         playBtn.disabled = false; // Enable playback
@@ -1026,6 +1031,8 @@
         
                     mediaRecorder.start();
                     isRecording = true;
+                    
+                    // IMPORTANT: The variables recordBtn and playBtn now point to the correct element
                     playBtn.disabled = true; // Disable playback while recording
                     recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="5"/></svg> Stop Recording`;
                     recordBtn.classList.add('record-btn-active');
@@ -1040,6 +1047,7 @@
                 mediaRecorder.stop();
             }
         };
+        // --- END UPDATED TOGGLE RECORDING FUNCTION ---
         
         window.playRecording = () => {
             if (recordedAudioBlob) {
@@ -1295,13 +1303,13 @@
             const isReviewMode = window.currentMode === 'review';
             const flashcardContainer = document.getElementById('flashcard-container');
             const navContainer = document.getElementById('lesson-nav');
-
+        
             flashcardContainer.classList.remove('hidden');
-
+        
             // 1. Render Mode Display 
             document.getElementById('current-mode-display').textContent = isReviewMode ? 'Speed Review' : 'Practice';
             document.getElementById('btn-start-review').style.display = isReviewMode ? 'none' : 'block';
-
+        
             // 2. Render Lesson Navigation (Practice Mode Only)
             if (window.currentMode === 'practice') {
                 navContainer.innerHTML = LESSONS.map((l, index) => {
@@ -1319,17 +1327,16 @@
                     `;
                 }).join('');
             }
-
+        
             // --- Lógica para el AUDIO: Lee SOLO la parte principal (card.french) ---
-            // Si el campo francés incluye paréntesis (como en tu versión original), usamos .split('(')
-            // Ya que ahora lo tienes limpio, simplemente usamos card.french.
             const audioText = card.french.split('(')[0].trim();
             // ----------------------------------------
-
+        
             // 3. Render Card Container and Details
             const cardContainer = document.getElementById('card-container');
             const cardDetail = document.getElementById('card-detail');
-
+            
+            // RENDER THE MAIN CARD CONTENT FIRST
             cardContainer.innerHTML = `
                 <div id="flip-container" class="flip-container h-80 w-full" onclick="flipCard()">
                     <div class="front">
@@ -1339,7 +1346,7 @@
                             <p class="text-2xl font-semibold mb-2 phonetic">${card.phonetic}</p>
                             
                             ${card.verbContext ? `<p class="text-xl font-bold text-indigo-500 mb-6">${card.verbContext}</p>` : '<p class="mb-6 h-7"></p>'}
-
+        
                             <button id="listen-button-main" onclick="event.stopPropagation(); handleListenClick('${audioText.replace(/'/g, "\\'")}')" 
                                 class="listen-btn mt-6 flex items-center justify-center mx-auto text-lg hover:shadow-lg">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-volume-2 w-5 h-5 mr-2">
@@ -1358,7 +1365,7 @@
                             <h2 class="text-4xl font-extrabold">${card.english}</h2>
                             
                             ${card.englishExample ? `<p class="mt-4 text-xl font-medium text-indigo-300">${card.englishExample}</p>` : ''}
-
+        
                             ${isReviewMode ? `<p class="mt-4 text-sm text-indigo-200">${card.lessonTitle}</p>` : ''}
                         </div>
                     </div>
@@ -1367,7 +1374,31 @@
             if (window.isFlipped) {
                 document.getElementById('flip-container').classList.add('flipped');
             }
-            
+        
+            // --------------------------------------------------------------------------------
+            // *** MOVED BLOCK: Render the Recording Controls AFTER the card content ***
+            // --------------------------------------------------------------------------------
+            const recordingControls = document.getElementById('flashcard-recording-controls');
+            // Ensure you have a container in your main HTML with id="flashcard-recording-controls"
+            if (recordingControls) {
+                recordingControls.classList.remove('hidden'); 
+                recordingControls.innerHTML = `
+                    <div class="flex justify-center space-x-4 p-4 bg-indigo-100 rounded-2xl shadow-inner my-6">
+                        <button id="record-btn-flashcard" onclick="toggleRecording()" class="action-btn flex items-center text-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                            Start Recording
+                        </button>
+                        <button id="play-btn-flashcard" onclick="playRecording()" disabled class="action-btn flex items-center text-sm bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 disabled:cursor-not-allowed" style="box-shadow: 0 4px #4b5563;">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Play My Recording
+                        </button>
+                    </div>
+                `;
+            }
+            // --------------------------------------------------------------------------------
+            // END MOVED BLOCK
+            // --------------------------------------------------------------------------------
+                    
             // 4. Render Card Details and Navigation
             const totalCards = list.length;
             const currentCardNumber = window.currentCardIndex + 1;
@@ -1380,13 +1411,13 @@
             } else {
                  detailText = `Mode: <span class="font-semibold">Speed Review</span> | ${detailText}`;
             }
-
+        
             cardDetail.innerHTML = `<p class="text-sm text-gray-500 mt-4">${detailText}</p>`;
-
+        
             const btnPrev = document.getElementById('btn-prev');
             const btnNext = document.getElementById('btn-next');
             const isLastCard = window.currentCardIndex === totalCards - 1;
-
+        
             btnPrev.disabled = window.currentCardIndex === 0;
             btnPrev.onclick = prevCard;
             btnNext.onclick = nextCard;
@@ -1544,6 +1575,13 @@
                 </div>
             </section>
 
+            <!-- flashcard-recording-controls -->
+            <div id="flashcard-recording-controls">
+                </div>
+            <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
+                <div id="card-detail" class="mb-4 sm:mb-0">
+                    </div>
+            
             <!-- Card Details and Navigation -->
             <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
                 <div id="card-detail" class="mb-4 sm:mb-0">
