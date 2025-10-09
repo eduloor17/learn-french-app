@@ -3,223 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>French Companion App</title>
+    <title>Expanded French Learning Hub</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Configure Inter font -->
     <style>
-        :root {
-            --color-practice: #4f46e5;
-            --color-practice-text: #ffffff;
-            --color-conversations: #10b981;
-            --color-conversations-text: #ffffff;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f7f9fc;
-        }
-        .flip-container {
-            perspective: 1000px;
-            cursor: pointer;
+            background-color: #f7f7f9;
         }
         .lesson-card {
-            min-height: 25rem;
+            transition: transform 0.4s ease-in-out, box-shadow 0.4s ease-in-out;
+            cursor: pointer;
+            perspective: 1000px;
         }
-        .flip-container:hover .flipper, .flip-container.flipped .flipper {
-            transform: rotateY(180deg);
-        }
-        .flipper {
-            transition: 0.6s;
-            transform-style: preserve-3d;
-            position: relative;
-        }
-        .front, .back {
-            backface-visibility: hidden;
-            position: absolute;
-            top: 0;
-            left: 0;
+        .flip-container {
             width: 100%;
             height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flip-container.flipped {
+            transform: rotateY(180deg);
+        }
+        .front, .back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 1.5rem; /* Slightly larger radius */
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 1.5rem;
             padding: 1.5rem;
-            box-sizing: border-box;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         .front {
-            z-index: 2;
-            transform: rotateY(0deg);
-            background-color: #f0f4ff;
-            color: #1e3a8a;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            background-color: #ffffff;
+            color: #1e40af; /* Blue */
         }
         .back {
-            transform: rotateY(180deg);
-            background-color: #6366f1;
+            background-color: #1e40af; /* Blue */
             color: #ffffff;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: rotateY(180deg);
+        }
+        .listen-btn, .action-btn {
+            background-color: #f97316; /* Orange */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: bold;
+            transition: background-color 0.15s, box-shadow 0.15s, transform 0.15s;
+            box-shadow: 0 4px #c2410c;
+        }
+        .listen-btn:hover, .action-btn:hover {
+            background-color: #ea580c;
+        }
+        .listen-btn:active, .action-btn:active {
+            box-shadow: none;
+            transform: translateY(4px);
+        }
+        .record-btn-active {
+            background-color: #ef4444; /* Red */
+            box-shadow: 0 4px #b91c1c;
+            animation: pulse 1s infinite;
+        }
+        .record-btn-active:hover {
+            background-color: #dc2626;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
         .phonetic {
-            font-family: monospace;
-            opacity: 0.7;
-            margin-bottom: 1rem;
+            color: #f97316; /* Orange 500 */
         }
-        .listen-btn {
-            background-color: #c7d2fe;
-            color: #4f46e5;
-            padding: 0.5rem 1rem;
-            border-radius: 0.75rem;
-            font-weight: 600;
-            transition: background-color 0.15s;
-        }
-        .listen-btn:hover {
-            background-color: #a5b4fc;
-        }
-        .action-btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 1rem;
-            font-weight: 700;
-            color: white;
-            transition: all 0.15s ease-in-out;
-            background-color: #4f46e5;
-            box-shadow: 0 4px #4338ca;
-        }
-        .action-btn:hover {
-            transform: translateY(1px);
-            box-shadow: 0 3px #4338ca;
-        }
-        .action-btn:active {
-            transform: translateY(4px);
-            box-shadow: none;
-        }
-        /* Custom style for the recording button when active */
-        #record-btn-flashcard.recording, #record-btn.recording {
-            background-color: #ef4444; /* Red */
-            box-shadow: 0 4px #dc2626; /* Darker Red Shadow */
-            animation: pulse-red 1.5s infinite;
-        }
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-        
     </style>
+    <!-- Firebase Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // setLogLevel('Debug'); // Enable Firestore logging
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
-        // --- GLOBAL STATE ---
-        window.currentView = 'flashcard'; // 'flashcard', 'conversations', or 'wordGuess'
-        window.currentMode = 'practice'; // 'practice' (for flashcards), 'review' (for flashcards), 'conversations', 'guess' (for word game)
+        setLogLevel('Debug');
+
+        // --- GLOBAL CONFIGS & STATE ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'french-learner-default';
+
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        // --- VOICE RECORDING STATE ---
+        let mediaRecorder;
+        let audioChunks = [];
+        let recordedAudioBlob = null;
+        let isRecording = false;
+
+        // --- APPLICATION STATE ---
+        window.currentProgress = {};
         window.currentLessonIndex = 0;
         window.currentCardIndex = 0;
-        window.activeCardList = [];
         window.isFlipped = false;
-        window.currentProgress = {}; // Stores completion status { 'animals': true, ... }
-        window.isRecording = false;
-        window.mediaRecorder = null;
-        window.audioChunks = [];
-        window.recordedAudioUrl = null;
-        window.isListening = false;
+        window.currentMode = 'practice'; // 'practice', 'review', or 'conversations'
+        window.activeCardList = [];
         window.currentConversationIndex = 0;
-        window.guessWordState = {
-            currentWord: '',
-            scrambledWord: '',
-            userGuess: '',
-            message: '',
-            score: 0
-        };
 
-
-        // --- FIREBASE & AUTH SETUP ---
-        let db, auth, userId;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : undefined;
-
-        window.initFirebase = async () => {
-            if (!firebaseConfig || !firebaseConfig.apiKey) {
-                document.getElementById('loading-message').textContent = 'Firebase config missing. Running offline.';
-                window.loadData();
-                return;
-            }
-
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                await (initialAuthToken
-                    ? signInWithCustomToken(auth, initialAuthToken)
-                    : signInAnonymously(auth)
-                );
-
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        document.getElementById('user-id-display').textContent = `User ID: ${userId.substring(0, 8)}...`;
-                        window.loadData();
-                    } else {
-                        // This case should ideally not happen if signed in anonymously
-                        console.error("User not authenticated after sign-in attempt.");
-                    }
-                });
-
-            } catch (error) {
-                console.error("Firebase Initialization or Sign-in Error:", error);
-                document.getElementById('loading-message').textContent = `Authentication failed. Running offline. (${error.message})`;
-                // Fallback to offline
-                window.loadData();
-            }
-        };
-
-        // --- FIRESTORE FUNCTIONS ---
-        const getProgressDocRef = (uid) => doc(db, 'artifacts', appId, 'users', uid, 'data', 'progress');
-
-        window.loadData = async () => {
-            if (db && userId) {
-                const docRef = getProgressDocRef(userId);
-                onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        window.currentProgress = docSnap.data().completion || {};
-                        console.log("Progress loaded:", window.currentProgress);
-                    } else {
-                        console.log("No progress found, starting fresh.");
-                        window.currentProgress = {};
-                    }
-                    window.activeCardList = LESSONS[window.currentLessonIndex].cards;
-                    window.currentCardIndex = 0; // Reset index on load/lesson change
-                    renderApp(); // Initial render after data is ready
-                }, (error) => {
-                    console.error("Error listening to progress:", error);
-                    window.activeCardList = LESSONS[window.currentLessonIndex].cards;
-                    renderApp();
-                });
-            } else {
-                // Offline fallback
-                window.activeCardList = LESSONS[window.currentLessonIndex].cards;
-                renderApp();
-            }
-        };
-
-        window.saveProgress = async () => {
-            if (!db || !userId) return; // Skip if offline
-
-            const docRef = getProgressDocRef(userId);
-            try {
-                await setDoc(docRef, { completion: window.currentProgress }, { merge: true });
-                console.log("Progress saved successfully.");
-            } catch (e) {
-                console.error("Error saving document: ", e);
-            }
-        };
-
-        // --- DATA (LESSONS AND CONVERSATIONS) ---
+        // --- CONTENT DATA (UNCHANGED) ---
         const LESSONS = [
             // --- ID 1: Greetings & Politeness ---
             { id: 1, title: "Greetings & Politeness", progressKey: "greetings", cards: [
@@ -1050,91 +945,301 @@
             },
         ];
         
-        // Initialize active card list with the first lesson's cards
-        if (LESSONS.length > 0) {
-            window.activeCardList = LESSONS[0].cards;
-        }
+        window.LESSONS = LESSONS;
+        window.CONVERSATIONS = CONVERSATIONS;
+        
+        // --- AUDIO UTILITY FUNCTION (Using Native Browser TTS) ---
 
-        // --- UI UTILITY FUNCTIONS ---
-        window.showNotification = (message, type = 'info') => {
-            const box = document.getElementById('notification-box');
-            let colorClass = 'bg-indigo-500';
-            if (type === 'success') colorClass = 'bg-green-500';
-            if (type === 'error') colorClass = 'bg-red-500';
-
-            box.innerHTML = `<div class="p-3 text-white rounded-xl shadow-lg font-bold text-center ${colorClass}">${message}</div>`;
-            box.style.opacity = 1;
-            box.style.position = 'fixed';
-            box.style.top = '1rem';
-            box.style.left = '50%';
-            box.style.transform = 'translateX(-50%)';
-            box.style.zIndex = '1000';
-
-            setTimeout(() => {
-                box.style.opacity = 0;
-            }, 3000);
-        };
-
-        // --- NAVIGATION AND MODE CONTROLS ---
-
-        window.changeView = (newView) => {
-            window.currentView = newView;
-            
-            // Set the appropriate mode when switching views
-            if (newView === 'flashcard') {
-                window.currentMode = 'practice';
-                // Reset to the beginning of the active lesson
-                window.activeCardList = LESSONS[window.currentLessonIndex].cards;
-                window.currentCardIndex = 0;
-            } else if (newView === 'conversations') {
-                window.currentMode = 'conversations';
-                window.currentConversationIndex = 0;
-            } else if (newView === 'wordGuess') {
-                window.currentMode = 'guess';
-                window.guessWordState.score = 0;
-                window.startNewWordGuessGame();
+        window.handleListenClick = (text) => {
+            // Stop any currently speaking audio
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
             }
             
-            window.isFlipped = false;
-            renderApp();
+            // Check for native support
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // Set language to French for best native voice selection
+                utterance.lang = 'fr-FR'; 
+                
+                // Attempt to find a French voice for better pronunciation
+                const voices = window.speechSynthesis.getVoices();
+                const frenchVoice = voices.find(voice => voice.lang === 'fr-FR' || voice.lang.startsWith('fr'));
+                
+                if (frenchVoice) {
+                    utterance.voice = frenchVoice;
+                }
+                
+                // Speed control (optional)
+                utterance.rate = 1.0; 
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                showNotification("Browser does not support native Text-to-Speech.", 'error');
+            }
         };
 
-        window.startSpeedReview = () => {
-            const completedKeys = Object.keys(window.currentProgress).filter(key => window.currentProgress[key] === true);
+        // --- UPDATED TOGGLE RECORDING FUNCTION ---
+        window.toggleRecording = async () => {
+            // -------------------------------------------------------------------------
+            // *** CRITICAL CHANGE: UNIVERSAL BUTTON FINDER ***
+            // This finds the record button rendered in either the conversation view (old ID)
+            // OR the flashcard view (new ID). Do the same for the play button.
+            // -------------------------------------------------------------------------
+            const recordBtn = document.getElementById('record-btn') || document.getElementById('record-btn-flashcard');
+            const playBtn = document.getElementById('play-btn') || document.getElementById('play-btn-flashcard');
             
-            if (completedKeys.length === 0) {
-                window.showNotification("Complete at least one lesson before starting a review!", 'info');
+            // Safety check: if no buttons are found (i.e., we are in a different view), exit safely.
+            if (!recordBtn || !playBtn) {
+                return; 
+            }
+            // -------------------------------------------------------------------------
+                    
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showNotification("Microphone access not supported in this browser/environment.", 'error');
+                return;
+            }
+            
+            if (!isRecording) {
+                // Start recording
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    
+                    // Reverted to browser default format (usually webm/opus) for compatibility
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    recordedAudioBlob = null;
+        
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+        
+                    mediaRecorder.onstop = () => {
+                        recordedAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+                        
+                        // Cleanup stream tracks
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        // IMPORTANT: The variables recordBtn and playBtn now point to the correct element
+                        recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg> Start Recording`;
+                        recordBtn.classList.remove('record-btn-active');
+                        playBtn.disabled = false; // Enable playback
+                        isRecording = false;
+                        showNotification("Recording finished. Click 'Play My Recording' to listen.", 'info');
+                    };
+        
+                    mediaRecorder.start();
+                    isRecording = true;
+                    
+                    // IMPORTANT: The variables recordBtn and playBtn now point to the correct element
+                    playBtn.disabled = true; // Disable playback while recording
+                    recordBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="5"/></svg> Stop Recording`;
+                    recordBtn.classList.add('record-btn-active');
+                    showNotification("Recording started...", 'info');
+        
+                } catch (err) {
+                    console.error('Recording failed:', err);
+                    showNotification(`Error accessing microphone: ${err.name}.`, 'error');
+                }
+            } else {
+                // Stop recording
+                mediaRecorder.stop();
+            }
+        };
+        // --- END UPDATED TOGGLE RECORDING FUNCTION ---
+        
+        window.playRecording = () => {
+            if (recordedAudioBlob) {
+                const audioUrl = URL.createObjectURL(recordedAudioBlob);
+                const audio = new Audio(audioUrl);
+                audio.play();
+                audio.onended = () => { URL.revokeObjectURL(audioUrl); };
+            } else {
+                showNotification("No recording available. Please record your voice first.", 'info');
+            }
+        };
+
+        // --- FIREBASE/FIRESTORE FUNCTIONS (UNCHANGED) ---
+
+        const getProgressDocRef = () => {
+            if (!userId) return null;
+            const progressCollectionPath = `/artifacts/${appId}/users/${userId}/french_progress`;
+            return doc(db, progressCollectionPath, "data");
+        };
+
+        const loadProgress = () => {
+            const docRef = getProgressDocRef();
+            if (!docRef || !isAuthReady) return;
+
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    window.currentProgress = docSnap.data().progress || {};
+                    window.activeCardList = LESSONS[window.currentLessonIndex].cards; 
+                    renderApp(); 
+                } else {
+                    window.currentProgress = {};
+                    window.activeCardList = LESSONS[window.currentLessonIndex].cards;
+                    renderApp(); 
+                }
+            }, (error) => {
+                console.error("Error listening to progress:", error);
+            });
+        };
+
+        const saveProgress = async () => {
+            const docRef = getProgressDocRef();
+            if (!docRef || !isAuthReady) {
+                console.warn("Cannot save progress: Firestore not ready or unauthorized.");
                 return;
             }
 
+            const dataToSave = {
+                progress: window.currentProgress,
+                lastUpdated: new Date().toISOString()
+            };
+
+            try {
+                // Removed withRetry utility, using direct setDoc since Firestore is reliable
+                await setDoc(docRef, dataToSave, { merge: true });
+            } catch (error) {
+                console.error("Failed to save progress:", error);
+                showNotification("Failed to save progress. Check console for details.", 'error');
+            }
+        };
+
+        const initFirebase = async () => {
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    isAuthReady = true;
+                    userId = crypto.randomUUID(); 
+                    window.activeCardList = LESSONS[0].cards;
+                    renderApp();
+                    return;
+                }
+
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                const authPromise = new Promise(resolve => {
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) { userId = user.uid; } 
+                        else {
+                            try {
+                                if (initialAuthToken) {
+                                    const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                                    userId = userCredential.user.uid;
+                                } else {
+                                    const userCredential = await signInAnonymously(auth);
+                                    userId = userCredential.user.uid;
+                                }
+                            } catch (error) {
+                                console.error("Authentication failed:", error);
+                                userId = crypto.randomUUID(); 
+                            }
+                        }
+                        isAuthReady = true;
+                        resolve();
+                    });
+                });
+
+                await authPromise;
+                document.getElementById('user-id-display').textContent = `User ID: ${userId.substring(0, 8)}...`;
+                loadProgress();
+            } catch (error) {
+                console.error("Failed to initialize Firebase:", error);
+                document.getElementById('loading-message').textContent = "Error initializing Firebase. Check console.";
+            }
+        };
+
+        // --- UI & APPLICATION LOGIC (UNCHANGED) ---
+
+        const showNotification = (message, type = 'info') => {
+            const notification = document.getElementById('notification-box');
+            notification.textContent = message;
+            notification.className = `p-3 rounded-xl text-sm transition-all duration-300 fixed top-4 right-4 z-50 shadow-xl 
+            ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-100 text-green-800'}`;
+            notification.style.opacity = 1;
+            setTimeout(() => {
+                notification.style.opacity = 0;
+            }, 3000);
+        };
+
+        window.changeView = (view) => {
+            window.currentMode = view;
+            window.isFlipped = false;
+            if (view === 'conversations') {
+                window.currentConversationIndex = 0;
+            } else if (view === 'practice') {
+                window.activeCardList = LESSONS[window.currentLessonIndex].cards;
+            }
+            renderApp();
+        };
+
+        // --- FLASHCARD MODE FUNCTIONS ---
+
+        window.startSpeedReview = () => {
+            window.currentMode = 'review';
             let reviewCards = [];
-            completedKeys.forEach(key => {
-                const lesson = LESSONS.find(l => l.progressKey === key);
-                if (lesson) {
-                    reviewCards = reviewCards.concat(lesson.cards);
+            LESSONS.forEach(lesson => {
+                const multiplier = window.currentProgress[lesson.progressKey] ? 1 : 3; 
+                for (let i = 0; i < multiplier; i++) {
+                    lesson.cards.forEach(card => {
+                        reviewCards.push({...card, lessonTitle: lesson.title});
+                    });
                 }
             });
-
-            // Randomize and set state
-            window.activeCardList = reviewCards.sort(() => Math.random() - 0.5);
-            window.currentMode = 'review';
+            for (let i = reviewCards.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [reviewCards[i], reviewCards[j]] = [reviewCards[j], reviewCards[i]];
+            }
+            window.activeCardList = reviewCards;
             window.currentCardIndex = 0;
             window.isFlipped = false;
-
+            showNotification(`Starting Speed Review Mode with ${reviewCards.length} cards!`);
             renderApp();
         };
 
         window.selectLesson = (index) => {
+            window.currentMode = 'practice';
             window.currentLessonIndex = index;
-            window.activeCardList = LESSONS[index].cards;
             window.currentCardIndex = 0;
             window.isFlipped = false;
+            window.activeCardList = LESSONS[index].cards;
             renderApp();
         };
 
         window.flipCard = () => {
+            if (window.currentMode === 'conversations') return; // Do not flip in conversation mode
             window.isFlipped = !window.isFlipped;
-            document.getElementById('flip-container').classList.toggle('flipped', window.isFlipped);
+            const flipContainer = document.getElementById('flip-container');
+            if (flipContainer) {
+                flipContainer.classList.toggle('flipped', window.isFlipped);
+            }
+        };
+
+        window.nextCard = () => {
+            const list = window.activeCardList;
+            if (window.currentCardIndex < list.length - 1) {
+                window.currentCardIndex++;
+                window.isFlipped = false;
+                renderApp();
+            } else {
+                if (window.currentMode === 'practice') {
+                    const lesson = LESSONS[window.currentLessonIndex];
+                    markLessonComplete(lesson.progressKey);
+                    showNotification(`Lesson "${lesson.title}" completed!`);
+                    if (window.currentLessonIndex < LESSONS.length - 1) {
+                        window.selectLesson(window.currentLessonIndex + 1);
+                    } else {
+                        window.selectLesson(0);
+                    }
+                } else { // Review Mode finished
+                    showNotification(`Speed Review finished! You reviewed ${list.length} cards.`);
+                    window.selectLesson(0);
+                }
+            }
         };
 
         window.prevCard = () => {
@@ -1145,32 +1250,22 @@
             }
         };
 
-        window.nextCard = async () => {
-            const totalCards = window.activeCardList.length;
-            const isLastCard = window.currentCardIndex === totalCards - 1;
+        const markLessonComplete = (key) => {
+            if (!window.currentProgress[key]) {
+                window.currentProgress[key] = true;
+                saveProgress();
+            }
+        };
 
-            if (isLastCard) {
-                // If in Practice mode, mark lesson complete
-                if (window.currentMode === 'practice') {
-                    const lessonKey = LESSONS[window.currentLessonIndex].progressKey;
-                    window.currentProgress[lessonKey] = true;
-                    await window.saveProgress();
-                    window.showNotification(`Lesson '${LESSONS[window.currentLessonIndex].title}' completed!`, 'success');
-                    
-                    // Move to next lesson or loop
-                    const nextIndex = (window.currentLessonIndex + 1) % LESSONS.length;
-                    window.selectLesson(nextIndex);
-
-                } else if (window.currentMode === 'review') {
-                    // End review mode
-                    window.showNotification("Speed Review finished!", 'success');
-                    window.changeView('flashcard'); // Go back to practice view
-                }
-
+        // --- CONVERSATION MODE FUNCTIONS ---
+        
+        window.nextConversation = () => {
+            if (window.currentConversationIndex < CONVERSATIONS.length - 1) {
+                window.currentConversationIndex++;
+                renderApp();
             } else {
-                // Move to next card
-                window.currentCardIndex++;
-                window.isFlipped = false;
+                window.currentConversationIndex = 0;
+                showNotification("Looping back to the first conversation topic.", 'info');
                 renderApp();
             }
         };
@@ -1182,274 +1277,27 @@
             }
         };
 
-        window.nextConversation = () => {
-            const totalConvs = CONVERSATIONS.length;
-            window.currentConversationIndex = (window.currentConversationIndex + 1) % totalConvs;
-            renderApp();
-        };
+        // --- MAIN RENDER FUNCTION ---
 
-
-        // --- TTS & Recording FUNCTIONS (STUBS) ---
-
-        const BASE_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/';
-        const API_KEY = ""; // Canvas will inject this
-
-        // Helper function to convert base64 to ArrayBuffer
-        const base64ToArrayBuffer = (base64) => {
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        };
-
-        // Helper function to convert PCM data to WAV Blob
-        const pcmToWav = (pcmData, sampleRate) => {
-            const numChannels = 1;
-            const bytesPerSample = 2; // 16-bit PCM
-
-            const buffer = new ArrayBuffer(44 + pcmData.length * bytesPerSample);
-            const view = new DataView(buffer);
-            let offset = 0;
-
-            // Write RIFF header
-            view.setUint32(offset, 0x46464952, false); offset += 4; // "RIFF"
-            view.setUint32(offset, 36 + pcmData.length * bytesPerSample, true); offset += 4; // file size
-            view.setUint32(offset, 0x45564157, false); offset += 4; // "WAVE"
-
-            // Write FMT chunk
-            view.setUint32(offset, 0x20746d66, false); offset += 4; // "fmt "
-            view.setUint32(offset, 16, true); offset += 4; // chunk size
-            view.setUint16(offset, 1, true); offset += 2; // audio format (1 = PCM)
-            view.setUint16(offset, numChannels, true); offset += 2; // number of channels
-            view.setUint32(offset, sampleRate, true); offset += 4; // sample rate
-            view.setUint32(offset, sampleRate * numChannels * bytesPerSample, true); offset += 4; // byte rate
-            view.setUint16(offset, numChannels * bytesPerSample, true); offset += 2; // block align
-            view.setUint16(offset, bytesPerSample * 8, true); offset += 2; // bits per sample
-
-            // Write DATA chunk
-            view.setUint32(offset, 0x61746164, false); offset += 4; // "data"
-            view.setUint32(offset, pcmData.length * bytesPerSample, true); offset += 4; // data size
-
-            // Write PCM data
-            for (let i = 0; i < pcmData.length; i++) {
-                view.setInt16(offset, pcmData[i], true);
-                offset += 2;
-            }
-
-            return new Blob([buffer], { type: 'audio/wav' });
-        };
-
-        window.handleListenClick = async (text) => {
-            if (window.isListening) return; // Prevent simultaneous calls
-
-            window.isListening = true;
-            window.showNotification("Generating audio...", 'info');
-            
-            const model = "gemini-2.5-flash-preview-tts";
-            const voiceName = "Kore"; // Example voice
-            const listenButtonId = window.currentView === 'conversations' ? '#listen-button-q, #listen-button-a1, #listen-button-a2' : '.listen-btn';
-            
-            document.querySelectorAll(listenButtonId).forEach(btn => btn.disabled = true);
-
-            const payload = {
-                contents: [{ parts: [{ text: text }] }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: voiceName }
-                        }
-                    }
-                },
-            };
-
-            const url = `${BASE_API_URL}${model}:generateContent?key=${API_KEY}`;
-            let response, result;
-
-            try {
-                // Simple retry loop (exponential backoff)
-                for (let i = 0; i < 3; i++) {
-                    response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.ok) break;
-                    if (i < 2) await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i))); // Wait 1s, 2s
-                    else throw new Error("API request failed after retries.");
-                }
-
-                if (!response || !response.ok) throw new Error(`HTTP error! status: ${response ? response.status : 'unknown'}`);
-                
-                result = await response.json();
-                const part = result?.candidates?.[0]?.content?.parts?.[0];
-                const audioData = part?.inlineData?.data;
-                const mimeType = part?.inlineData?.mimeType;
-
-                if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
-                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
-                    if (!sampleRateMatch) throw new Error("Could not parse sample rate from MIME type.");
-                    const sampleRate = parseInt(sampleRateMatch[1], 10);
-                    
-                    const pcmData = base64ToArrayBuffer(audioData);
-                    const pcm16 = new Int16Array(pcmData);
-                    const wavBlob = pcmToWav(pcm16, sampleRate);
-                    const audioUrl = URL.createObjectURL(wavBlob);
-
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-                    audio.onended = () => {
-                        window.isListening = false;
-                        document.querySelectorAll(listenButtonId).forEach(btn => btn.disabled = false);
-                        window.showNotification("Audio finished.", 'success');
-                    };
-                    window.showNotification("Playing audio...", 'success');
-
-                } else {
-                    throw new Error("Invalid or missing audio data in response.");
-                }
-
-            } catch (error) {
-                console.error("TTS Error:", error);
-                window.showNotification("Error generating audio.", 'error');
-                window.isListening = false;
-                document.querySelectorAll(listenButtonId).forEach(btn => btn.disabled = false);
-            }
-        };
-
-        window.toggleRecording = async () => {
-            const recordButtonId = window.currentView === 'conversations' ? 'record-btn' : 'record-btn-flashcard';
-            const playButtonId = window.currentView === 'conversations' ? 'play-btn' : 'play-btn-flashcard';
-            const recordBtn = document.getElementById(recordButtonId);
-            const playBtn = document.getElementById(playButtonId);
-            
-            if (window.isRecording) {
-                // STOP recording
-                window.mediaRecorder.stop();
-                window.isRecording = false;
-                recordBtn.textContent = 'Start Recording';
-                recordBtn.classList.remove('recording');
-                window.showNotification('Recording finished.', 'success');
-            } else {
-                // START recording
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    window.mediaRecorder = new MediaRecorder(stream);
-                    window.audioChunks = [];
-
-                    window.mediaRecorder.ondataavailable = event => {
-                        window.audioChunks.push(event.data);
-                    };
-
-                    window.mediaRecorder.onstop = () => {
-                        const audioBlob = new Blob(window.audioChunks, { type: 'audio/webm' });
-                        window.recordedAudioUrl = URL.createObjectURL(audioBlob);
-                        playBtn.disabled = false;
-                        recordBtn.disabled = false;
-                    };
-
-                    window.mediaRecorder.start();
-                    window.isRecording = true;
-                    recordBtn.textContent = 'Stop Recording';
-                    recordBtn.classList.add('recording');
-                    playBtn.disabled = true;
-                    window.showNotification('Recording started (max 5s)...', 'info');
-                    
-                    // Stop after 5 seconds automatically
-                    setTimeout(() => {
-                        if (window.isRecording) window.toggleRecording();
-                    }, 5000);
-
-                } catch (err) {
-                    console.error('Recording error:', err);
-                    window.showNotification('Microphone access denied or failed.', 'error');
-                }
-            }
-        };
-
-        window.playRecording = () => {
-            if (window.recordedAudioUrl) {
-                const audio = new Audio(window.recordedAudioUrl);
-                audio.play();
-                window.showNotification('Playing back your recording.', 'info');
-            } else {
-                window.showNotification('No recording found.', 'error');
-            }
-        };
-
-
-        // --- MAIN RENDER FUNCTION (UPDATED) ---
-
-        /**
-         * Renders the entire application based on the current view (Flashcard, Conversation, Guess Word)
-         * This function addresses all layout and visibility requests.
-         */
-        window.renderApp = () => {
+        const renderApp = () => {
             document.getElementById('loading-state').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
 
-            // View/Mode Definitions
-            const isFlashcard = window.currentView === 'flashcard';
-            const isConversation = window.currentView === 'conversations';
-            const isWordGuess = window.currentView === 'wordGuess';
+            // Set container visibility
+            const isConversation = window.currentMode === 'conversations';
+            document.getElementById('flashcard-container').style.display = isConversation ? 'none' : 'block';
+            document.getElementById('conversation-container').style.display = isConversation ? 'block' : 'none';
+            document.getElementById('lesson-nav-container').style.display = (window.currentMode === 'practice') ? 'block' : 'none';
 
-            // Get all relevant containers
-            const flashcardContainer = document.getElementById('flashcard-container');
-            const conversationContainer = document.getElementById('conversation-container');
-            const wordGuessContainer = document.getElementById('word-guess-container');
-            const modeStatusBar = document.getElementById('mode-status-bar');
-
-            // 1. Set Container Visibility (Show only one main view)
-            flashcardContainer.style.display = isFlashcard ? 'block' : 'none';
-            conversationContainer.style.display = isConversation ? 'block' : 'none';
-            wordGuessContainer.style.display = isWordGuess ? 'block' : 'none';
-
-            // 2. Control Mode/Status Bar Visibility (Fix 1: Hide for Guess Word)
-            // This hides the entire bar containing "Current Mode" and the "Speed Review" button.
-            if (modeStatusBar) {
-                modeStatusBar.style.display = (isFlashcard || isConversation) ? 'flex' : 'none';
-            }
-
-            // 3. Set Lesson Nav Visibility (Fix 2: Show only for Flashcards in Practice mode)
-            document.getElementById('lesson-nav-container').style.display = 
-                (window.currentMode === 'practice' && isFlashcard) ? 'block' : 'none';
-            
-
-            // 4. Set Mode Text and Review Button Visibility
-            let modeText = '';
-            let showReviewBtn = false;
-            
-            if (isFlashcard) {
-                modeText = window.currentMode === 'review' ? 'Speed Review' : 'Practice';
-                showReviewBtn = (window.currentMode === 'practice');
-            } else if (isConversation) {
-                modeText = 'Conversations';
-            } else if (isWordGuess) {
-                // Fix 3: Set display text for the new mode (This only happens if the status bar is visible, 
-                // but we handle the view internally for games)
-                modeText = 'Guess Word'; 
-            }
-            document.getElementById('current-mode-display').textContent = modeText;
-            document.getElementById('btn-start-review').style.display = showReviewBtn ? 'block' : 'none';
-
-
-            // 5. Render Content
-            if (isFlashcard) {
+            // Render Flashcard View
+            if (!isConversation) {
                 renderFlashcardView();
-            } else if (isConversation) {
+            } else {
                 renderConversationPractice();
-            } else if (isWordGuess) {
-                renderWordGuessView(); // Call the new game renderer
             }
         };
 
-        // --- VIEW RENDERERS ---
-
-        window.renderFlashcardView = () => {
+        const renderFlashcardView = () => {
             const list = window.activeCardList;
             const card = list[window.currentCardIndex];
             const isReviewMode = window.currentMode === 'review';
@@ -1458,14 +1306,18 @@
         
             flashcardContainer.classList.remove('hidden');
         
-            // 1. Render Lesson Navigation (Fix 2: This block is now guaranteed to run if mode === 'practice')
+            // 1. Render Mode Display 
+            document.getElementById('current-mode-display').textContent = isReviewMode ? 'Speed Review' : 'Practice';
+            document.getElementById('btn-start-review').style.display = isReviewMode ? 'none' : 'block';
+        
+            // 2. Render Lesson Navigation (Practice Mode Only)
             if (window.currentMode === 'practice') {
                 navContainer.innerHTML = LESSONS.map((l, index) => {
                     const isActive = index === window.currentLessonIndex;
                     const isDone = window.currentProgress[l.progressKey];
                     return `
                         <button onclick="selectLesson(${index})"
-                            class="p-3 text-sm font-medium rounded-xl transition duration-150 ease-in-out flex items-center justify-center
+                            class="p-3 text-sm font-medium rounded-xl transition duration-150 ease-in-out
                             ${isActive ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'}
                             ${isDone && !isActive ? 'border-2 border-green-500 text-green-700' : 'border border-gray-200'}
                             ">
@@ -1480,13 +1332,13 @@
             const audioText = card.french.split('(')[0].trim();
             // ----------------------------------------
         
-            // 2. Render Card Container and Details
+            // 3. Render Card Container and Details
             const cardContainer = document.getElementById('card-container');
             const cardDetail = document.getElementById('card-detail');
             
             // RENDER THE MAIN CARD CONTENT FIRST
             cardContainer.innerHTML = `
-                <div id="flip-container" class="flipper h-80 w-full" onclick="flipCard()">
+                <div id="flip-container" class="flip-container h-80 w-full" onclick="flipCard()">
                     <div class="front">
                         <div class="text-center">
                             <p class="text-2xl font-semibold mb-2 text-gray-500">French</p>
@@ -1524,10 +1376,12 @@
             }
         
             // --------------------------------------------------------------------------------
-            // Render the Recording Controls
+            // *** MOVED BLOCK: Render the Recording Controls AFTER the card content ***
             // --------------------------------------------------------------------------------
             const recordingControls = document.getElementById('flashcard-recording-controls');
+            // Ensure you have a container in your main HTML with id="flashcard-recording-controls"
             if (recordingControls) {
+                recordingControls.classList.remove('hidden'); 
                 recordingControls.innerHTML = `
                     <div class="flex justify-center space-x-4 p-4 bg-indigo-100 rounded-2xl shadow-inner my-6">
                         <button id="record-btn-flashcard" onclick="toggleRecording()" class="action-btn flex items-center text-sm">
@@ -1542,8 +1396,10 @@
                 `;
             }
             // --------------------------------------------------------------------------------
-        
-            // 3. Render Card Details and Navigation
+            // END MOVED BLOCK
+            // --------------------------------------------------------------------------------
+                    
+            // 4. Render Card Details and Navigation
             const totalCards = list.length;
             const currentCardNumber = window.currentCardIndex + 1;
             
@@ -1576,12 +1432,13 @@
             btnPrev.className = `p-3 rounded-xl font-semibold transition duration-150 ${window.currentCardIndex === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-300 text-gray-700 hover:bg-gray-400'}`;
         };
         
-        window.renderConversationPractice = () => {
+        const renderConversationPractice = () => {
             const currentConv = CONVERSATIONS[window.currentConversationIndex];
             const convContainer = document.getElementById('conversation-container');
             const totalConvs = CONVERSATIONS.length;
             
             convContainer.classList.remove('hidden');
+            document.getElementById('current-mode-display').textContent = 'Conversations';
         
             // Main Conversation Card
             convContainer.innerHTML = `
@@ -1655,86 +1512,9 @@
                 </div>
             `;
         };
-
-        // --- NEW GAME RENDERER (Stub for Guess Word Mode) ---
-        window.renderWordGuessView = () => {
-            const container = document.getElementById('word-guess-container');
-            const score = window.guessWordState.score;
-            const scrambled = window.guessWordState.scrambledWord;
-            const message = window.guessWordState.message;
-
-            container.innerHTML = `
-                <div class="bg-white rounded-3xl shadow-2xl p-6 mb-6">
-                    <h2 class="text-3xl font-extrabold text-pink-600 mb-2 text-center">Guess the Word!</h2>
-                    <p class="text-xl text-gray-600 mb-6 text-center">Score: <span class="font-bold">${score}</span></p>
-
-                    <div class="text-center p-8 bg-pink-50 rounded-xl border-4 border-pink-200">
-                        <p class="text-sm font-medium text-pink-700 mb-2">Unscramble the French word:</p>
-                        <h3 class="text-6xl font-black tracking-widest text-pink-900 uppercase select-none">${scrambled}</h3>
-                    </div>
-
-                    <div class="mt-8">
-                        <input id="user-guess-input" type="text" placeholder="Type your guess here (in French)"
-                            class="w-full p-4 text-center text-xl border-2 border-gray-300 rounded-xl focus:border-pink-500 focus:ring focus:ring-pink-200 transition"
-                            value="${window.guessWordState.userGuess}"
-                            oninput="window.guessWordState.userGuess = this.value"
-                            onkeydown="if(event.key === 'Enter') checkGuess()">
-                        
-                        <button onclick="window.checkGuess()" class="action-btn w-full mt-4 bg-pink-600 hover:bg-pink-700" style="box-shadow: 0 4px #c026d3;">
-                            Check Guess
-                        </button>
-                    </div>
-                    
-                    <p id="guess-message" class="text-center mt-4 text-lg font-semibold ${message.includes('Correct') ? 'text-green-600' : 'text-red-600'}">${message}</p>
-                </div>
-            `;
-            document.getElementById('user-guess-input').focus();
-        };
-
-        window.startNewWordGuessGame = () => {
-            const allCards = LESSONS.flatMap(l => l.cards);
-            const randomCard = allCards[Math.floor(Math.random() * allCards.length)];
-            const word = randomCard.french.toLowerCase().replace(/[^a-z]/g, ''); // Use base word
-            
-            // Function to scramble a string
-            const scramble = (str) => {
-                const arr = str.split('');
-                for (let i = arr.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [arr[i], arr[j]] = [arr[j], arr[i]];
-                }
-                return arr.join('');
-            };
-
-            window.guessWordState.currentWord = word;
-            window.guessWordState.scrambledWord = scramble(word);
-            window.guessWordState.userGuess = '';
-            window.guessWordState.message = '';
-            renderWordGuessView();
-        };
-
-        window.checkGuess = () => {
-            const correctWord = window.guessWordState.currentWord;
-            const userGuess = window.guessWordState.userGuess.toLowerCase().replace(/[^a-z]/g, '');
-
-            if (userGuess === correctWord) {
-                window.guessWordState.score += 1;
-                window.guessWordState.message = `🎉 Correct! The word was '${correctWord}'. Starting next round...`;
-                window.showNotification('Correct!', 'success');
-                setTimeout(window.startNewWordGuessGame, 1500);
-            } else {
-                window.guessWordState.score = Math.max(0, window.guessWordState.score - 1);
-                window.guessWordState.message = `❌ Incorrect. Try again! (Hint: It relates to '${LESSONS.flatMap(l => l.cards).find(c => c.french.toLowerCase().replace(/[^a-z]/g, '') === correctWord)?.english}')`;
-                window.showNotification('Incorrect. Try again!', 'error');
-            }
-            renderWordGuessView();
-        };
-
-        // --- INIT ---
+        
         window.onload = () => {
             initFirebase();
-            // Start the game for the first time
-            window.startNewWordGuessGame();
         };
     </script>
 </head>
@@ -1745,20 +1525,16 @@
     <header class="max-w-xl mx-auto mb-8">
         <h1 class="text-4xl font-extrabold text-indigo-700">🇫🇷 French Companion</h1>
         <p id="user-id-display" class="text-sm text-gray-500 mt-1">Initializing...</p>
-        <div class="flex flex-wrap space-x-3 mt-4">
-            <button onclick="changeView('flashcard')" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md"
+        <div class="flex space-x-3 mt-4">
+            <button onclick="changeView('practice')" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md"
                 style="background-color: var(--color-practice); color: var(--color-practice-text);"
-                :class="{'bg-indigo-600 text-white': currentView === 'flashcard', 'bg-white text-gray-700 border border-gray-300': currentView !== 'flashcard'}">
+                :class="{'bg-indigo-600 text-white': currentMode !== 'conversations', 'bg-white text-gray-700 border border-gray-300': currentMode === 'conversations'}">
                 Flashcards
             </button>
             <button onclick="changeView('conversations')" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md"
                 style="background-color: var(--color-conversations); color: var(--color-conversations-text);"
-                :class="{'bg-green-600 text-white': currentView === 'conversations', 'bg-white text-gray-700 border border-gray-300': currentView !== 'conversations'}">
+                :class="{'bg-green-600 text-white': currentMode === 'conversations', 'bg-white text-gray-700 border border-gray-300': currentMode !== 'conversations'}">
                 Conversations
-            </button>
-            <!-- New button for the Guess Word Game -->
-            <button onclick="changeView('wordGuess')" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md bg-pink-500 text-white hover:bg-pink-600 mt-2 sm:mt-0">
-                Word Game
             </button>
         </div>
     </header>
@@ -1772,19 +1548,12 @@
     <!-- Main Content (Hidden until initialized) -->
     <main id="main-content" class="max-w-xl mx-auto" style="display: none;">
 
-        <!-- Mode Selector / Status Bar (Fixed Position for Flashcard/Conversations) -->
-        <!-- Fix 1: Added ID `mode-status-bar` for controlled visibility in JS -->
-        <div id="mode-status-bar" class="flex flex-col sm:flex-row justify-between items-center mb-6 p-4 bg-indigo-50 rounded-2xl shadow-inner">
+        <!-- Mode Selector / Status Bar -->
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-6 p-4 bg-indigo-50 rounded-2xl shadow-inner">
             <h2 class="text-lg font-semibold text-indigo-700 mb-2 sm:mb-0">Current Mode: <span id="current-mode-display" class="capitalize font-extrabold text-indigo-900">Practice</span></h2>
-            <!-- Start Speed Review Button (Visibility controlled in renderApp) -->
             <button id="btn-start-review" onclick="startSpeedReview()" class="px-4 py-2 w-full sm:w-auto text-sm font-bold bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition duration-150 shadow-lg">
                 🚀 Start Speed Review
             </button>
-        </div>
-
-        <!-- Word Guess Game View (Fix 3: New Container) -->
-        <div id="word-guess-container" class="hidden">
-            <!-- Content rendered by renderWordGuessView() -->
         </div>
 
         <!-- Conversation Practice View -->
@@ -1794,7 +1563,7 @@
         
         <!-- Flashcard View -->
         <div id="flashcard-container">
-            <!-- Lesson Navigation (Fix 2: Shows the Animal/Colors list in Practice mode) -->
+            <!-- Lesson Navigation (Practice Mode Only) -->
             <div id="lesson-nav-container">
                 <nav id="lesson-nav" class="flex flex-wrap gap-3 mb-6 p-4 bg-white rounded-2xl shadow-md"></nav>
             </div>
@@ -1806,20 +1575,23 @@
                 </div>
             </section>
 
-            <!-- Flashcard Recording Controls (Microphone) -->
+            <!-- flashcard-recording-controls -->
             <div id="flashcard-recording-controls">
-            </div>
-
+                </div>
+            <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
+                <div id="card-detail" class="mb-4 sm:mb-0">
+                    </div>
+            
             <!-- Card Details and Navigation -->
             <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
                 <div id="card-detail" class="mb-4 sm:mb-0">
                     <!-- Card details will be rendered here -->
                 </div>
                 <div class="flex space-x-3 w-full sm:w-auto">
-                    <button id="btn-prev" onclick="prevCard()" class="flex-1 p-3 rounded-xl font-semibold transition duration-150">
+                    <button id="btn-prev" onclick="prevCard()" class="flex-1">
                         < Back
                     </button>
-                    <button id="btn-next" onclick="nextCard()" class="flex-1 p-3 rounded-xl font-semibold transition duration-150">
+                    <button id="btn-next" onclick="nextCard()" class="flex-1">
                         Next Card
                     </button>
                 </div>
