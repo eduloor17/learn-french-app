@@ -1062,13 +1062,13 @@
 
         // --- FIREBASE/FIRESTORE FUNCTIONS (UNCHANGED) ---
 
-        const getProgressDocRef = () => {
+        window.getProgressDocRef = () => {
             if (!userId) return null;
             const progressCollectionPath = `/artifacts/${appId}/users/${userId}/french_progress`;
             return doc(db, progressCollectionPath, "data");
         };
 
-        const loadProgress = () => {
+        window.loadProgress = () => {
             const docRef = getProgressDocRef();
             if (!docRef || !isAuthReady) return;
 
@@ -1087,7 +1087,7 @@
             });
         };
 
-        const saveProgress = async () => {
+        windows.saveProgress = async () => {
             const docRef = getProgressDocRef();
             if (!docRef || !isAuthReady) {
                 console.warn("Cannot save progress: Firestore not ready or unauthorized.");
@@ -1108,7 +1108,7 @@
             }
         };
 
-        const initFirebase = async () => {
+        window.initFirebase = async () => {
             try {
                 if (Object.keys(firebaseConfig).length === 0) {
                     isAuthReady = true;
@@ -1155,7 +1155,7 @@
 
         // --- UI & APPLICATION LOGIC (UNCHANGED) ---
 
-        const showNotification = (message, type = 'info') => {
+        window.showNotification = (message, type = 'info') => {
             const notification = document.getElementById('notification-box');
             notification.textContent = message;
             notification.className = `p-3 rounded-xl text-sm transition-all duration-300 fixed top-4 right-4 z-50 shadow-xl 
@@ -1169,7 +1169,7 @@
         // --- This function is now the single source of truth for showing/hiding all primary view containers
         
         // --- VIEW HANDLER ---
-        const changeView = (newView) => {
+        window.changeView = (newView) => {
             // 1. Set the new global view state
             window.currentView = newView;
             
@@ -1250,7 +1250,7 @@
          * Generates an array of letters including all letters from the target word
          * plus random distractors, up to LETTER_OPTION_COUNT.
          */
-        const generateLetterOptions = (word) => {
+        window.generateLetterOptions = (word) => {
             const uniqueLetters = [...new Set(word.split(''))];
             const alphabet = 'abcdefghijklmnopqrstuvwxyzéàèùâêîôûëïüçœæ';
             const options = new Set(uniqueLetters);
@@ -1492,7 +1492,7 @@
             }
         };
         
-        const markLessonComplete = (key) => {
+        window.markLessonComplete = (key) => {
             if (!window.currentProgress[key]) {
                 window.currentProgress[key] = true;
                 saveProgress();
@@ -1520,7 +1520,7 @@
         };
         
         // --- MAIN RENDER FUNCTION ---
-        const renderApp = () => {
+        window.renderApp = () => {
             document.getElementById('loading-state').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
         
@@ -1575,7 +1575,7 @@
         // ----------------------------------------------------
         // *** ADDED: RENDER FLASHCARD VIEW FUNCTION BLOCK ***
         // ----------------------------------------------------
-        const renderFlashcardView = () => {
+        window.renderFlashcardView = () => {
             // These must be defined before use in the logic below:
             const card = window.activeCardList[window.currentCardIndex];
             const list = window.activeCardList;
@@ -1688,7 +1688,7 @@
         // *** END of RENDER FLASHCARD VIEW FUNCTION BLOCK ***
         // ----------------------------------------------------
                 
-        const renderConversationPractice = () => {
+        window.renderConversationPractice = () => {
             const currentConv = CONVERSATIONS[window.currentConversationIndex];
             const convContainer = document.getElementById('conversation-container');
             const totalConvs = CONVERSATIONS.length;
