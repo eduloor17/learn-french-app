@@ -1166,14 +1166,26 @@
             }, 3000);
         };
 
-        window.changeView = (view) => {
-            window.currentMode = view;
+        // --- This function is now the single source of truth for showing/hiding all primary view containers
+        
+        window.changeView = (newView) => {
+            // 1. Set the primary view state
+            window.currentView = newView; // Set a new global state variable to track the view
+            
+            // 2. Map the view to the old 'mode' for compatibility/status bar
+            window.currentMode = (newView === 'flashcard') ? 'practice' : newView;
+        
             window.isFlipped = false;
-            if (view === 'conversations') {
+            
+            // 3. Reset specific index/list based on the new view
+            if (newView === 'conversations') {
                 window.currentConversationIndex = 0;
-            } else if (view === 'practice') {
+            } else if (newView === 'flashcard') {
+                // Use 'flashcard' view name here to match the new changeView parameter
                 window.activeCardList = LESSONS[window.currentLessonIndex].cards;
             }
+            
+            // 4. Call the main render function
             renderApp();
         };
 
@@ -1500,55 +1512,56 @@
         };
 
         // --- MAIN RENDER FUNCTION ---
-
         const renderApp = () => {
             document.getElementById('loading-state').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
-
-            // Set container visibility
-            const isConversation = window.currentMode === 'conversations';
-            document.getElementById('flashcard-container').style.display = isConversation ? 'none' : 'block';
-            document.getElementById('conversation-container').style.display = isConversation ? 'block' : 'none';
-            document.getElementById('lesson-nav-container').style.display = (window.currentMode === 'practice') ? 'block' : 'none';
-
-            // Render Flashcard View
-            if (!isConversation) {
+        
+            // Get all view containers
+            const flashcardContainer = document.getElementById('flashcard-container');
+            const conversationContainer = document.getElementById('conversation-container');
+            const wordGuessContainer = document.getElementById('word-guess-container'); // This must exist in HTML
+            const lessonNavContainer = document.getElementById('lesson-nav-container');
+        
+            // --- Set container visibility using the new window.currentView ---
+            
+            // 1. Manage Main Containers
+            flashcardContainer.style.display = (window.currentView === 'flashcard') ? 'block' : 'none';
+            conversationContainer.style.display = (window.currentView === 'conversations') ? 'block' : 'none';
+            
+            if (wordGuessContainer) {
+                wordGuessContainer.style.display = (window.currentView === 'wordGuess') ? 'block' : 'none';
+            }
+        
+            // 2. Manage Lesson Navigation (Only visible in 'practice' mode within the 'flashcard' view)
+            if (lessonNavContainer) {
+                lessonNavContainer.style.display = (window.currentMode === 'practice') ? 'block' : 'none';
+            }
+        
+            // 3. Update Status Bar Display
+            let modeDisplayText = window.currentMode.charAt(0).toUpperCase() + window.currentMode.slice(1);
+            if (window.currentMode === 'practice' || window.currentMode === 'flashcard') {
+                modeDisplayText = 'Practice';
+            } else if (window.currentMode === 'review') {
+                modeDisplayText = 'Speed Review';
+            } else if (window.currentMode === 'wordGuess') {
+                modeDisplayText = 'Guess Word';
+            }
+            document.getElementById('current-mode-display').textContent = modeDisplayText;
+            
+            // Manage Speed Review button visibility
+            document.getElementById('btn-start-review').style.display = (window.currentMode === 'practice') ? 'block' : 'none';
+        
+        
+            // 4. Call specific render functions
+            if (window.currentView === 'flashcard') {
                 renderFlashcardView();
-            } else {
+            } else if (window.currentView === 'conversations') {
                 renderConversationPractice();
+            } else if (window.currentView === 'wordGuess') {
+                // renderWordGuessView handles content population for the game
+                renderWordGuessView(); 
             }
         };
-
-        const renderFlashcardView = () => {
-            const list = window.activeCardList;
-            const card = list[window.currentCardIndex];
-            const isReviewMode = window.currentMode === 'review';
-            const flashcardContainer = document.getElementById('flashcard-container');
-            const navContainer = document.getElementById('lesson-nav');
-        
-            flashcardContainer.classList.remove('hidden');
-        
-            // 1. Render Mode Display 
-            document.getElementById('current-mode-display').textContent = isReviewMode ? 'Speed Review' : 'Practice';
-            document.getElementById('btn-start-review').style.display = isReviewMode ? 'none' : 'block';
-        
-            // 2. Render Lesson Navigation (Practice Mode Only)
-            if (window.currentMode === 'practice') {
-                navContainer.innerHTML = LESSONS.map((l, index) => {
-                    const isActive = index === window.currentLessonIndex;
-                    const isDone = window.currentProgress[l.progressKey];
-                    return `
-                        <button onclick="selectLesson(${index})"
-                            class="p-3 text-sm font-medium rounded-xl transition duration-150 ease-in-out
-                            ${isActive ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'}
-                            ${isDone && !isActive ? 'border-2 border-green-500 text-green-700' : 'border border-gray-200'}
-                            ">
-                            ${l.title}
-                            ${isDone ? '<span class="ml-2">✅</span>' : ''}
-                        </button>
-                    `;
-                }).join('');
-            }
         
             // --- Lógica para el AUDIO: Lee SOLO la parte principal (card.french) ---
             const audioText = card.french.split('(')[0].trim();
