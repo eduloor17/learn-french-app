@@ -1177,6 +1177,228 @@
             renderApp();
         };
 
+        // --- GUESS MODE FUNCTIONS ---
+
+        // Word Guessing State
+        window.wordGuessState = {
+            targetCard: null,      // The card object being guessed
+            targetWord: '',        // The actual French word (e.g., "maison")
+            targetLength: 0,       // The length of the French word
+            attemptsRemaining: 3,  // Number of tries left
+            isGameOver: false,
+            gameMode: '',          // 'write' or 'pick'
+            letterOptions: [],     // Array of letters for the 'pick' mode
+        };
+        
+        // Constant for the number of available letter options (e.g., 12 letters)
+        const LETTER_OPTION_COUNT = 12;
+
+        // This function picks a random card and initializes the game state.    
+        window.startWordGuessMode = () => {
+            // 1. Choose a random card from all available cards (LESSONS.flat())
+            const allCards = LESSONS.flatMap(lesson => lesson.cards);
+            if (allCards.length === 0) {
+                showNotification('No words available for the guessing game.', 'error');
+                return;
+            }
+            const randomIndex = Math.floor(Math.random() * allCards.length);
+            const card = allCards[randomIndex];
+            
+            const frenchWord = card.french.toLowerCase().split('(')[0].trim().replace(/\s/g, ''); // Clean the French word
+        
+            // 2. Determine game mode: 50% chance for 'write' (typing) or 'pick' (letter selection)
+            const mode = Math.random() < 0.5 ? 'write' : 'pick';
+        
+            // 3. Initialize state
+            window.wordGuessState = {
+                targetCard: card,
+                targetWord: frenchWord,
+                targetLength: frenchWord.length,
+                attemptsRemaining: 3,
+                isGameOver: false,
+                gameMode: mode,
+                letterOptions: mode === 'pick' ? generateLetterOptions(frenchWord) : [],
+            };
+        
+            // 4. Set the view and render
+            window.currentView = 'wordGuess';
+            renderWordGuessView();
+        };
+        
+        /**
+         * Generates an array of letters including all letters from the target word
+         * plus random distractors, up to LETTER_OPTION_COUNT.
+         */
+        const generateLetterOptions = (word) => {
+            const uniqueLetters = [...new Set(word.split(''))];
+            const alphabet = 'abcdefghijklmnopqrstuvwxyzéàèùâêîôûëïüçœæ';
+            const options = new Set(uniqueLetters);
+            
+            // Add random letters until the count is met
+            while (options.size < LETTER_OPTION_COUNT) {
+                const randomChar = alphabet[Math.floor(Math.random() * alphabet.length)];
+                options.add(randomChar);
+            }
+        
+            // Convert Set to array and shuffle
+            let shuffledOptions = Array.from(options);
+            for (let i = shuffledOptions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+            }
+            return shuffledOptions;
+        };
+
+        // -- This function validates the guess, updates attempts, and handles win/loss conditions.
+
+        window.checkGuess = (guess) => {
+            const state = window.wordGuessState;
+            if (state.isGameOver) return;
+        
+            const normalizedGuess = guess.toLowerCase().trim().replace(/\s/g, '');
+        
+            if (normalizedGuess === state.targetWord) {
+                state.isGameOver = true;
+                showNotification(`🎉 Correct! The word was: ${state.targetCard.french}`, 'success');
+            } else {
+                state.attemptsRemaining -= 1;
+                
+                if (state.attemptsRemaining <= 0) {
+                    state.isGameOver = true;
+                    showNotification(`❌ Game Over! The word was: ${state.targetCard.french} (${state.targetCard.english})`, 'error');
+                } else {
+                    showNotification(`Try again! ${state.attemptsRemaining} attempts left.`, 'warning');
+                }
+            }
+            renderWordGuessView(); // Re-render to update the display
+        };
+
+        // --- This function generates the HTML for the guessing game based on the current state
+
+        window.renderWordGuessView = () => {
+            const state = window.wordGuessState;
+            const mainContent = document.getElementById('main-content');
+            mainContent.classList.remove('hidden');
+            
+            document.getElementById('flashcard-container').classList.add('hidden');
+            document.getElementById('conversation-container').classList.add('hidden');
+        
+            // Create or find the word guess container
+            let wordGuessContainer = document.getElementById('word-guess-container');
+            if (!wordGuessContainer) {
+                wordGuessContainer = document.createElement('div');
+                wordGuessContainer.id = 'word-guess-container';
+                mainContent.appendChild(wordGuessContainer);
+            }
+            wordGuessContainer.classList.remove('hidden');
+            
+            const attempts = state.attemptsRemaining;
+            const isOver = state.isGameOver;
+            
+            // Display the English word and the blanks for the French word
+            let wordDisplay = Array(state.targetLength).fill('\_').join(' ');
+            let hint = isOver ? state.targetWord.split('').join(' ') : wordDisplay;
+            
+            // Define the input/selection area based on the game mode
+            let guessInputHTML = '';
+            
+            if (state.gameMode === 'write') {
+                // --- WRITE MODE (Text Input) ---
+                guessInputHTML = `
+                    <div class="flex flex-col space-y-4">
+                        <input id="guess-input" type="text" placeholder="Type your French guess here..." 
+                               class="p-4 border-2 border-indigo-300 rounded-xl text-lg font-medium focus:border-indigo-500 transition duration-150"
+                               ${isOver ? 'disabled' : ''} onkeydown="if(event.key==='Enter') document.getElementById('submit-guess-btn').click()">
+                        <button id="submit-guess-btn" onclick="checkGuess(document.getElementById('guess-input').value)" 
+                                class="p-3 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-150"
+                                ${isOver ? 'disabled' : ''}>
+                            Submit Guess (${attempts} tries left)
+                        </button>
+                    </div>
+                `;
+            } else {
+                // --- PICK MODE (Letter Selection) ---
+                const letterButtons = state.letterOptions.map(letter => 
+                    `<button onclick="appendLetter('${letter}')" 
+                             class="p-3 w-10 h-10 bg-indigo-200 text-indigo-900 font-bold rounded-lg shadow-sm hover:bg-indigo-300 transition duration-100"
+                             ${isOver ? 'disabled' : ''}>
+                        ${letter.toUpperCase()}
+                    </button>`
+                ).join('');
+        
+                // Hidden input to build the word
+                // NOTE: You will need to implement appendLetter() and clearGuess() functions separately (see below)
+                guessInputHTML = `
+                    <div class="flex flex-col space-y-4">
+                        <div id="current-pick-guess" class="p-4 h-16 border-2 border-indigo-300 rounded-xl text-2xl font-extrabold text-gray-800 flex items-center justify-center bg-white">${wordDisplay}</div>
+                        <div class="flex flex-wrap gap-2 justify-center">${letterButtons}</div>
+                        <div class="flex space-x-2">
+                            <button onclick="clearGuess()" class="p-3 flex-1 bg-gray-500 text-white font-bold rounded-xl hover:bg-gray-600 transition duration-150" ${isOver ? 'disabled' : ''}>Clear</button>
+                            <button id="submit-guess-btn" onclick="checkGuess(document.getElementById('current-pick-guess').textContent.replace(/\\s/g, ''))" 
+                                    class="p-3 flex-1 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition duration-150"
+                                    ${isOver ? 'disabled' : ''}>
+                                Submit Guess (${attempts} tries left)
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        
+            wordGuessContainer.innerHTML = `
+                <div class="p-8 bg-white rounded-3xl shadow-2xl mb-6 text-center">
+                    <h3 class="text-xl font-bold text-pink-600 mb-2">Word Guess Mode</h3>
+                    <p class="text-3xl font-extrabold text-gray-800 mt-4 mb-4">
+                        ${state.targetCard.english}
+                    </p>
+                    <p class="text-lg text-gray-500 mb-6">
+                        French word has **${state.targetLength} letters**.
+                    </p>
+        
+                    <div class="text-5xl font-mono tracking-widest p-4 mb-6 border-b-4 border-indigo-500/50">
+                        ${hint}
+                    </div>
+        
+                    ${guessInputHTML}
+                    
+                    ${isOver ? `<button onclick="startWordGuessMode()" class="mt-6 px-6 py-3 text-lg font-bold bg-green-500 text-white rounded-xl shadow-lg hover:bg-green-600 transition duration-150">Play Another Word</button>` : ''}
+                </div>
+            `;
+        };
+
+        // --- Helper Functions for 'Pick Mode'
+
+        window.currentPickGuess = ''; // Global variable to hold the letter guess
+
+        window.appendLetter = (letter) => {
+            if (window.wordGuessState.isGameOver) return;
+            
+            // Check if the current guess is already the target length
+            if (window.currentPickGuess.length < window.wordGuessState.targetLength) {
+                window.currentPickGuess += letter;
+            }
+            
+            // Update the display div
+            const guessDisplay = document.getElementById('current-pick-guess');
+            if (guessDisplay) {
+                // Format the guess to show blanks for remaining letters
+                let formattedGuess = window.currentPickGuess.split('').join(' ');
+                const blanks = Array(window.wordGuessState.targetLength - window.currentPickGuess.length).fill('\_').join(' ');
+                guessDisplay.textContent = formattedGuess + (blanks ? ' ' + blanks : '');
+            }
+        };
+        
+        window.clearGuess = () => {
+            window.currentPickGuess = '';
+            
+            // Reset the display div
+            const guessDisplay = document.getElementById('current-pick-guess');
+            if (guessDisplay) {
+                guessDisplay.textContent = Array(window.wordGuessState.targetLength).fill('\_').join(' ');
+            }
+        };
+        
+        // --- FINISH GUESS MODE
+
         // --- FLASHCARD MODE FUNCTIONS ---
 
         window.startSpeedReview = () => {
@@ -1526,15 +1748,16 @@
         <h1 class="text-4xl font-extrabold text-indigo-700">🇫🇷 French Companion</h1>
         <p id="user-id-display" class="text-sm text-gray-500 mt-1">Initializing...</p>
         <div class="flex space-x-3 mt-4">
-            <button onclick="changeView('practice')" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md"
-                style="background-color: var(--color-practice); color: var(--color-practice-text);"
-                :class="{'bg-indigo-600 text-white': currentMode !== 'conversations', 'bg-white text-gray-700 border border-gray-300': currentMode === 'conversations'}">
+            <button onclick="changeView('flashcard')" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md"
+                style="background-color: var(--color-practice); color: var(--color-practice-text);">
                 Flashcards
             </button>
             <button onclick="changeView('conversations')" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md"
-                style="background-color: var(--color-conversations); color: var(--color-conversations-text);"
-                :class="{'bg-green-600 text-white': currentMode === 'conversations', 'bg-white text-gray-700 border border-gray-300': currentMode !== 'conversations'}">
+                style="background-color: var(--color-conversations); color: var(--color-conversations-text);">
                 Conversations
+            </button>
+            <button onclick="startWordGuessMode()" class="px-4 py-2 text-sm font-bold rounded-xl transition duration-150 shadow-md bg-purple-600 text-white hover:bg-purple-700">
+                Guess Word
             </button>
         </div>
     </header>
@@ -1548,45 +1771,35 @@
     <!-- Main Content (Hidden until initialized) -->
     <main id="main-content" class="max-w-xl mx-auto" style="display: none;">
 
-        <!-- Mode Selector / Status Bar -->
         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 p-4 bg-indigo-50 rounded-2xl shadow-inner">
             <h2 class="text-lg font-semibold text-indigo-700 mb-2 sm:mb-0">Current Mode: <span id="current-mode-display" class="capitalize font-extrabold text-indigo-900">Practice</span></h2>
             <button id="btn-start-review" onclick="startSpeedReview()" class="px-4 py-2 w-full sm:w-auto text-sm font-bold bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition duration-150 shadow-lg">
                 🚀 Start Speed Review
             </button>
         </div>
-
-        <!-- Conversation Practice View -->
+    
         <div id="conversation-container" class="hidden">
-            <!-- Content rendered by renderConversationPractice() -->
-        </div>
+            </div>
         
-        <!-- Flashcard View -->
         <div id="flashcard-container">
-            <!-- Lesson Navigation (Practice Mode Only) -->
             <div id="lesson-nav-container">
                 <nav id="lesson-nav" class="flex flex-wrap gap-3 mb-6 p-4 bg-white rounded-2xl shadow-md"></nav>
             </div>
-
-            <!-- Flashcard Area -->
+    
             <section class="bg-white rounded-3xl shadow-2xl overflow-hidden p-6 mb-6 lesson-card">
                 <div id="card-container" class="relative h-80">
-                    <!-- Card content will be rendered here -->
-                </div>
+                    </div>
             </section>
-
-            <!-- flashcard-recording-controls -->
+    
             <div id="flashcard-recording-controls">
                 </div>
             <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
                 <div id="card-detail" class="mb-4 sm:mb-0">
                     </div>
             
-            <!-- Card Details and Navigation -->
             <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
                 <div id="card-detail" class="mb-4 sm:mb-0">
-                    <!-- Card details will be rendered here -->
-                </div>
+                    </div>
                 <div class="flex space-x-3 w-full sm:w-auto">
                     <button id="btn-prev" onclick="prevCard()" class="flex-1">
                         < Back
@@ -1597,11 +1810,13 @@
                 </div>
             </div>
         </div>
-
+        
+        <div id="word-guess-container" class="hidden">
+            </div>
         <footer class="mt-8 text-center text-gray-400 text-xs">
             Progress is automatically saved to your user ID using Google Firestore.
         </footer>
-
+    
     </main>
 
 </body>
