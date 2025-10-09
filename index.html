@@ -1168,27 +1168,24 @@
 
         // --- This function is now the single source of truth for showing/hiding all primary view containers
         
-        window.changeView = (newView) => {
-            // 1. Set the primary view state
-            window.currentView = newView; // Set a new global state variable to track the view
+        // --- VIEW HANDLER ---
+        const changeView = (newView) => {
+            // 1. Set the new global view state
+            window.currentView = newView;
             
-            // 2. Map the view to the old 'mode' for compatibility/status bar
-            window.currentMode = (newView === 'flashcard') ? 'practice' : newView;
+            // 2. Set the default mode for 'flashcard' view
+            if (newView === 'flashcard') {
+                window.currentMode = 'practice';
+            } 
+            // You might want to reset the conversation index when switching away
+            // if (newView !== 'conversations') {
+            //     window.currentConversationIndex = 0;
+            // }
         
-            window.isFlipped = false;
-            
-            // 3. Reset specific index/list based on the new view
-            if (newView === 'conversations') {
-                window.currentConversationIndex = 0;
-            } else if (newView === 'flashcard') {
-                // Use 'flashcard' view name here to match the new changeView parameter
-                window.activeCardList = LESSONS[window.currentLessonIndex].cards;
-            }
-            
-            // 4. Call the main render function
+            // 3. Re-render the entire application based on the new state
             renderApp();
         };
-
+        
         // --- GUESS MODE FUNCTIONS ---
 
         // Word Guessing State
@@ -1206,8 +1203,10 @@
         const LETTER_OPTION_COUNT = 12;
 
         // This function picks a random card and initializes the game state.    
+        // HERE 
+        
         window.startWordGuessMode = () => {
-            // 1. Choose a random card from all available cards (LESSONS.flat())
+            // 1. Choose a random card (Your existing logic is fine)
             const allCards = LESSONS.flatMap(lesson => lesson.cards);
             if (allCards.length === 0) {
                 showNotification('No words available for the guessing game.', 'error');
@@ -1216,12 +1215,13 @@
             const randomIndex = Math.floor(Math.random() * allCards.length);
             const card = allCards[randomIndex];
             
-            const frenchWord = card.french.toLowerCase().split('(')[0].trim().replace(/\s/g, ''); // Clean the French word
-        
-            // 2. Determine game mode: 50% chance for 'write' (typing) or 'pick' (letter selection)
+            const frenchWord = card.french.toLowerCase().split('(')[0].trim().replace(/\s/g, ''); 
+            
+            // 2. Determine game mode
             const mode = Math.random() < 0.5 ? 'write' : 'pick';
-        
+            
             // 3. Initialize state
+            // ... (Your existing window.wordGuessState initialization is fine) ...
             window.wordGuessState = {
                 targetCard: card,
                 targetWord: frenchWord,
@@ -1232,9 +1232,18 @@
                 letterOptions: mode === 'pick' ? generateLetterOptions(frenchWord) : [],
             };
         
-            // 4. Set the view and render
+            // 4. *** CRITICAL CHANGE: Set the global view/mode and call renderApp ***
+            //    (This ensures the main renderer updates all containers and the status bar)
             window.currentView = 'wordGuess';
-            renderWordGuessView();
+            window.currentMode = 'wordGuess'; // Set the mode to be 'Guess Word' in the status bar
+        
+            // Call the main render loop to switch views and update the status bar
+            renderApp(); 
+            
+            // NOTE: If renderApp is called, the explicit call to renderWordGuessView() 
+            // inside startWordGuessMode is technically redundant (because renderApp calls it), 
+            // but leaving it doesn't hurt. For a cleaner implementation, rely on renderApp().
+            // renderWordGuessView(); // <-- You can remove this line if renderApp() is called
         };
         
         /**
@@ -1796,33 +1805,27 @@
 
     <!-- Main Content (Hidden until initialized) -->
     <main id="main-content" class="max-w-xl mx-auto" style="display: none;">
-
         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 p-4 bg-indigo-50 rounded-2xl shadow-inner">
             <h2 class="text-lg font-semibold text-indigo-700 mb-2 sm:mb-0">Current Mode: <span id="current-mode-display" class="capitalize font-extrabold text-indigo-900">Practice</span></h2>
             <button id="btn-start-review" onclick="startSpeedReview()" class="px-4 py-2 w-full sm:w-auto text-sm font-bold bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition duration-150 shadow-lg">
                 🚀 Start Speed Review
             </button>
         </div>
-    
         <div id="conversation-container" class="hidden">
             </div>
-        
         <div id="flashcard-container">
             <div id="lesson-nav-container">
                 <nav id="lesson-nav" class="flex flex-wrap gap-3 mb-6 p-4 bg-white rounded-2xl shadow-md"></nav>
             </div>
-    
             <section class="bg-white rounded-3xl shadow-2xl overflow-hidden p-6 mb-6 lesson-card">
                 <div id="card-container" class="relative h-80">
                     </div>
             </section>
-    
             <div id="flashcard-recording-controls">
                 </div>
             <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
                 <div id="card-detail" class="mb-4 sm:mb-0">
                     </div>
-            
             <div class="flex flex-col sm:flex-row justify-between items-center p-4 bg-white rounded-2xl shadow-md">
                 <div id="card-detail" class="mb-4 sm:mb-0">
                     </div>
@@ -1836,14 +1839,11 @@
                 </div>
             </div>
         </div>
-        
         <div id="word-guess-container" class="hidden">
             </div>
         <footer class="mt-8 text-center text-gray-400 text-xs">
             Progress is automatically saved to your user ID using Google Firestore.
         </footer>
-    
     </main>
-
 </body>
 </html>
