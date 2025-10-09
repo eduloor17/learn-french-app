@@ -1087,7 +1087,7 @@
             });
         };
 
-        windows.saveProgress = async () => {
+        window.saveProgress = async () => {
             const docRef = getProgressDocRef();
             if (!docRef || !isAuthReady) {
                 console.warn("Cannot save progress: Firestore not ready or unauthorized.");
