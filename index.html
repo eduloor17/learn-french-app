@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>French Learning App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css"> 
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+    <div id="app-root" class="max-w-4xl mx-auto py-10 px-4">
+        
+        <div id="loading-state" class="text-center p-10 bg-white rounded-xl shadow-lg">
+            <h1 class="text-2xl font-bold text-indigo-600 mb-4">Loading Application...</h1>
+            <p id="loading-message" class="text-gray-600">Initializing Firebase and loading data...</p>
+        </div>
+
+        <div id="main-content" style="display: none;">
+            
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h1 class="text-4xl font-extrabold text-gray-800">🇫🇷 French Learner</h1>
+                <div class="flex space-x-2">
+                    <button id="btn-view-practice" onclick="changeView('practice')" 
+                            class="p-2 px-4 rounded-xl font-semibold bg-indigo-600 text-white transition hover:bg-indigo-700">
+                        Practice
+                    </button>
+                    <button id="btn-view-conversations" onclick="changeView('conversations')" 
+                            class="p-2 px-4 rounded-xl font-semibold bg-white text-gray-700 hover:bg-gray-100 transition">
+                        Conversations
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-6">
+                <p id="current-mode-display" class="text-lg font-bold text-indigo-600">Practice</p>
+                <div class="text-right">
+                    <button id="btn-start-review" onclick="startSpeedReview()" 
+                            class="p-2 px-4 rounded-xl font-semibold text-sm bg-yellow-500 text-white hover:bg-yellow-600 transition">
+                        Start Speed Review
+                    </button>
+                    <p id="user-id-display" class="text-xs text-gray-400 mt-1">User ID: N/A</p>
+                </div>
+            </div>
+
+            <div id="lesson-nav-container" class="mb-8">
+                <h2 class="text-xl font-bold mb-3 text-gray-700">Select Lesson:</h2>
+                <div id="lesson-nav" class="flex flex-wrap gap-3 p-4 bg-gray-100 rounded-xl shadow-inner">
+                    </div>
+            </div>
+
+            <div id="flashcard-container">
+                <div id="card-detail" class="text-center">
+                    </div>
+                
+                <div id="card-container" 
+                     class="relative w-full h-80 perspective-1000 my-6">
+                    </div>
+
+                <div id="flashcard-recording-controls" class="hidden">
+                    </div>
+
+                <div class="flex justify-between items-center mt-6">
+                    <button id="btn-prev" onclick="prevCard()" disabled 
+                            class="p-3 rounded-xl font-semibold transition duration-150 bg-gray-300 text-gray-700 hover:bg-gray-400">
+                        &lt; Previous Card
+                    </button>
+                    <button id="btn-next" onclick="nextCard()" 
+                            class="p-3 rounded-xl font-semibold transition duration-150 bg-indigo-600 text-white hover:bg-indigo-700">
+                        Next Card &gt;
+                    </button>
+                </div>
+            </div>
+
+            <div id="conversation-container" style="display: none;">
+                </div>
+
+        </div>
+
+    </div>
+
+    <div id="notification-box" style="opacity: 0;" class="fixed top-4 right-4 z-50 p-3 rounded-xl text-sm transition-all duration-300 shadow-xl"></div>
+
+    <script type="module" src="./script.js"></script>
+
+</body>
+</html>
