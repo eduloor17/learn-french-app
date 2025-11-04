@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tuteur de Conversation Français</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#4F46E5', // Indigo
+                        'secondary': '#10B981', // Emerald/Teal
+                        'user-bubble': '#EEF2FF', // Indigo 50
+                        'ai-bubble': '#D1FAE5', // Emerald 100
+                        'playback': '#3B82F6', // Blue 500
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        .chat-container {
+            height: 70vh;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        .card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .animate-pulse-mic {
+            animation: pulse-mic 1.5s infinite;
+        }
+        @keyframes pulse-mic {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.05);
+            }
+        }
+        .ai-message-playable {
+            cursor: pointer;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4 font-sans">
+
+    <div id="app" class="w-full max-w-lg bg-white p-6 md:p-8 rounded-xl card flex flex-col h-[90vh]">
+        <h1 class="text-2xl font-bold text-center text-primary mb-1">Tuteur de Conversation Français</h1>
+        <p class="text-center text-gray-500 mb-4 text-sm">Parlons de n'importe quel sujet de votre choix !</p>
+
+        <!-- Chat Display Area -->
+        <div id="chatContainer" class="chat-container flex-grow p-4 space-y-4 border rounded-lg mb-4 bg-gray-50">
+            <!-- Initial AI Message -->
+            <div class="flex justify-start">
+                <div id="initial-ai-message" class="ai-message-playable max-w-xs md:max-w-md p-3 rounded-xl rounded-tl-none bg-ai-bubble text-gray-800 shadow-sm" 
+                    data-text="Bonjour ! Je suis ici pour vous aider à pratiquer vos compétences en conversation française. N'hésitez pas à lancer une discussion sur n'importe quel sujet : vos loisirs, l'actualité, les voyages, ou simplement votre journée. Comment puis-je vous aider à commencer à pratiquer aujourd'hui ?" 
+                    data-base64-audio="pending" data-sample-rate="pending">
+                    <p class="font-semibold text-secondary mb-1 text-sm">Tuteur</p>
+                    <p>Bonjour ! Je suis ici pour vous aider à pratiquer vos compétences en conversation française. N'hésitez pas à lancer une discussion sur n'importe quel sujet : vos loisirs, l'actualité, les voyages, ou simplement votre journée. **Comment puis-je vous aider à commencer à pratiquer aujourd'hui ?**</p>
+                    <div class="tts-status text-xs mt-2 text-primary font-bold flex items-center">
+                        <div class="spinner mr-2 w-4 h-4" style="border-top: 4px solid #4F46E5;"></div>
+                        Chargement de la voix du Tuteur...
+                    </div>
+                </div>
+            </div>
+            <!-- Dynamic Messages will be appended here -->
+        </div>
+
+        <!-- Input Area -->
+        <div id="inputArea" class="mt-auto">
+            <textarea id="chatInput" rows="2" class="w-full p-3 border border-gray-300 rounded-lg bg-white focus:ring-primary focus:border-primary resize-none mb-2" placeholder="Tapez votre réponse ici ou cliquez sur le microphone..."></textarea>
+            
+            <!-- Playback Button for User's Voice (hidden until recording stops) -->
+            <button id="playbackButton" class="w-full mb-2 py-2 px-4 text-white bg-playback hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-playback transition duration-150 rounded-lg shadow-md hidden flex items-center justify-center disabled:opacity-50" disabled>
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2a1 1 0 00-.445-.168z" clip-rule="evenodd"></path></svg>
+                <span id="playbackButtonText">Écouter Ma Voix</span>
+            </button>
+            
+            <div class="flex space-x-2">
+                <!-- Microphone Button for STT -->
+                <button id="micButton" class="p-3 rounded-lg text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 shadow-md w-1/5 disabled:opacity-50 flex items-center justify-center">
+                    <svg id="micIcon" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 8c1.66 0 3-1.34 3-3V3c0-1.66-1.34-3-3-3S7 1.34 7 3v2c0 1.66 1.34 3 3 3zm5-5V3c0-1.66 1.34-3 3-3s3 1.34 3 3v2c0 1.66-1.34 3-3 3s-3-1.34-3-3zm-5 13c-2.76 0-5-2.24-5-5h2c0 1.66 1.34 3 3 3s3-1.34 3-3h2c0 2.76-2.24 5-5 5zm9-5c0 1.66-1.34 3-3 3s-3-1.34-3-3H15zm-14 0h2c0 1.66 1.34 3 3 3s3-1.34 3-3H1z"/></svg>
+                    <div id="micLoading" class="spinner hidden"></div>
+                </button>
+
+                <!-- Send Button -->
+                <button id="sendButton" class="flex-grow flex items-center justify-center px-4 py-3 border border-transparent text-lg font-medium rounded-lg text-white bg-primary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition duration-150 shadow-md disabled:opacity-50 w-4/5" disabled>
+                    <span id="sendButtonText">Envoyer le Message</span>
+                    <div id="sendLoading" class="spinner ml-3 hidden"></div>
+                </button>
+            </div>
+            
+            <p id="inputStatus" class="text-sm mt-1 text-gray-500 text-center min-h-5"></p>
+            <p id="errorFeedback" class="text-red-600 mt-2 text-sm font-semibold hidden border-2 border-red-300 p-2 rounded-lg bg-red-100"></p>
+        </div>
+    </div>
+
+    <script>
+        // --- API & Utility Setup ---
+        const API_KEY = "AIzaSyANp8yRhJ4-BXKo2ywkW1R9FL0THlTz9nQ"; 
+        const LLM_MODEL = 'gemini-2.5-flash-preview-09-2025';
+        const LLM_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${LLM_MODEL}:generateContent?key=${API_KEY}`;
+        
+        // TTS Model and URL
+        const TTS_MODEL = 'gemini-2.5-flash-preview-tts';
+        const TTS_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent?key=${API_KEY}`;
+        // Set the voice to a French-friendly option
+        const TTS_VOICE = 'Callirrhoe'; 
+
+        // UI Elements (Translations applied directly in the script for dynamic messages)
+        const chatContainer = document.getElementById('chatContainer');
+        const chatInput = document.getElementById('chatInput');
+        const micButton = document.getElementById('micButton');
+        const sendButton = document.getElementById('sendButton');
+        const sendButtonText = document.getElementById('sendButtonText');
+        const sendLoading = document.getElementById('sendLoading');
+        const micIcon = document.getElementById('micIcon');
+        const micLoading = document.getElementById('micLoading');
+        const inputStatus = document.getElementById('inputStatus');
+        const errorFeedback = document.getElementById('errorFeedback');
+        const initialMessageElement = document.getElementById('initial-ai-message');
+        const playbackButton = document.getElementById('playbackButton');
+        const playbackButtonText = document.getElementById('playbackButtonText');
+        
+        // State Variables
+        let chatHistory = []; 
+        let isProcessing = false;
+        let isRecording = false;
+        let isPlaybackPlaying = false; 
+        
+        // Web Audio API State (Tutor Voice)
+        let tutorAudioContext = null;
+        let tutorSourceNode = null;
+        let isTutorPlaying = false;
+
+        // Microphone Recording State
+        let audioStream = null;
+        let mediaRecorder = null;
+        let recordedChunks = []; 
+        let recordedBlob = null; 
+        let userPlaybackAudio = null; 
+        let audioUrl = null;
+
+        // --- Translation Constants ---
+        const UI = {
+            TUTOR_ROLE: 'Tuteur',
+            USER_ROLE: 'Vous',
+            LOADING_VOICE: 'Chargement de la voix du Tuteur...',
+            PLAYBACK_ERROR: 'Erreur de Lecture',
+            VOICE_UNAVAILABLE: 'Voix Indisponible',
+            CLICK_TO_REPLAY: 'Cliquez pour Écouter (Rejouer)',
+            CONVERSATION_READY: 'Conversation Prête (Cliquez pour Commencer)',
+            PLAYING_BACK: 'Lecture en cours...',
+            LOADING_TEXT: 'Génération du texte...',
+            GENERATING_SPEECH: 'Génération de la parole...',
+            PROCESSING_AUDIO: 'Traitement de votre voix...',
+            TRANSCRIPTION_ERROR: 'Erreur de transcription. Veuillez vérifier ou essayer à nouveau.',
+            MIC_ACCESS_DENIED: 'Accès au microphone refusé ou erreur de l\'appareil. Veuillez vérifier les permissions.',
+            RECORDING: 'Enregistrement... Cliquez sur le micro pour arrêter.',
+            RECORDING_READY: 'Enregistrement prêt. Révisez ou cliquez sur Envoyer le Message.',
+            PLAY_MY_VOICE: 'Écouter Ma Voix',
+            STOP_PLAYBACK: 'Arrêter la lecture...',
+            SEND_MESSAGE: 'Envoyer le Message',
+            AUDIO_PLAYBACK_FAIL: 'Échec de la lecture audio. Cliquez sur le message pour réessayer.'
+        };
+
+
+        // --- Audio Utility Functions (for PCM data handling) ---
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // --- Audio State Management ---
+
+        /** Stops any currently playing tutor audio. */
+        function stopTutorAudio() {
+            if (tutorSourceNode) {
+                try {
+                    tutorSourceNode.stop();
+                    tutorSourceNode.disconnect();
+                } catch (e) {
+                    // Ignore error if audio is already stopped
+                }
+                tutorSourceNode = null;
+            }
+            if (tutorAudioContext) {
+                 tutorAudioContext.close().catch(e => console.warn("Failed to close AudioContext:", e));
+            }
+            tutorAudioContext = null;
+            isTutorPlaying = false;
+
+            // Reset all TTS status elements
+            document.querySelectorAll('.tts-status').forEach(statusElement => {
+                if (statusElement.textContent.includes(UI.PLAYING_BACK.split('...')[0])) {
+                    statusElement.classList.remove('text-primary', 'font-bold', 'flex', 'items-center'); 
+                    statusElement.classList.add('text-secondary'); 
+                    statusElement.innerHTML = `
+                        <svg class="w-4 h-4 inline-block mr-1 align-sub" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.383 3.013A1 1 0 0110 3v14a1 1 0 01-1.383.987l-6-3a1 1 0 01-.617-.922V5.935a1 1 0 01.617-.922l6-3z" clip-rule="evenodd"></path></svg>
+                        ${UI.CLICK_TO_REPLAY}
+                    `;
+                }
+            });
+             // Reset initial message status if it was playing
+            const initialStatus = initialMessageElement.querySelector('.tts-status');
+            if(initialStatus && initialStatus.textContent.includes(UI.PLAYING_BACK.split('...')[0])) {
+                initialStatus.innerHTML = `
+                    <svg class="w-4 h-4 inline-block mr-1 align-sub" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.383 3.013A1 1 0 0110 3v14a1 1 0 01-1.383.987l-6-3a1 1 0 01-.617-.922V5.935a1 1 0 01.617-.922l6-3z" clip-rule="evenodd"></path></svg>
+                    ${UI.CONVERSATION_READY}`;
+                initialStatus.classList.add('text-primary');
+                initialStatus.classList.remove('text-secondary', 'flex', 'items-center');
+            }
+        }
+
+        /** Stops user's voice playback */
+        function stopUserPlayback() {
+            if (userPlaybackAudio) {
+                userPlaybackAudio.pause();
+                userPlaybackAudio.currentTime = 0;
+            }
+            isPlaybackPlaying = false;
+            playbackButtonText.textContent = UI.PLAY_MY_VOICE;
+            playbackButton.disabled = recordedBlob === null;
+        }
+
+        /** Clears all active audio players and streams. */
+        function cleanupAudioResources() {
+            stopTutorAudio(); 
+            stopUserPlayback();
+             
+            // Stop mic stream
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+             // Stop media recorder
+             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            
+            // Cleanup recorded URL
+            if (recordedBlob && audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+            }
+        }
+
+        /** Resets all audio/recording related state. */
+        function resetRecordingState() {
+            cleanupAudioResources(); 
+            recordedChunks = [];
+            recordedBlob = null;
+            userPlaybackAudio = null;
+            audioUrl = null;
+            playbackButton.classList.add('hidden'); 
+        }
+
+        /**
+         * Plays raw PCM audio data using the Web Audio API (AudioContext).
+         */
+        function playTutorAudioUsingContext(base64Data, sampleRate, statusElement, isInitial = false) {
+            stopTutorAudio(); 
+            stopUserPlayback(); 
+
+            // --- UI/Status Update (Pre-playback) ---
+            statusElement.textContent = UI.LOADING_TEXT.split('...')[0] + '...';
+            statusElement.classList.remove('text-secondary'); 
+            statusElement.classList.add('text-primary', 'font-bold', 'flex', 'items-center');
+
+            try {
+                const pcmBuffer = base64ToArrayBuffer(base64Data);
+                const pcm16 = new Int16Array(pcmBuffer);
+                
+                tutorAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
+                
+                const audioBuffer = tutorAudioContext.createBuffer(1, pcm16.length, sampleRate);
+                const outputData = audioBuffer.getChannelData(0);
+                
+                for (let i = 0; i < pcm16.length; i++) {
+                    outputData[i] = pcm16[i] / 32768; 
+                }
+
+                tutorSourceNode = tutorAudioContext.createBufferSource();
+                tutorSourceNode.buffer = audioBuffer;
+                tutorSourceNode.connect(tutorAudioContext.destination);
+                
+                isTutorPlaying = true;
+                
+                // 4. Playback and End Handler
+                tutorSourceNode.onended = () => {
+                    if (tutorSourceNode) { 
+                        isTutorPlaying = false;
+                        tutorSourceNode = null; 
+                        tutorAudioContext = null;
+                        
+                        const replayText = isInitial ? UI.CONVERSATION_READY : UI.CLICK_TO_REPLAY;
+                        
+                        // Reset status element to 'Click to Hear'
+                        statusElement.classList.remove('text-primary', 'font-bold', 'flex', 'items-center'); 
+                        statusElement.classList.add('text-secondary'); 
+                        statusElement.innerHTML = `
+                            <svg class="w-4 h-4 inline-block mr-1 align-sub" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.383 3.013A1 1 0 0110 3v14a1 1 0 01-1.383.987l-6-3a1 1 0 01-.617-.922V5.935a1 1 0 01.617-.922l6-3z" clip-rule="evenodd"></path></svg>
+                            ${replayText}
+                        `;
+                    }
+                };
+                
+                if (tutorAudioContext.state === 'suspended') {
+                    tutorAudioContext.resume();
+                }
+
+                tutorSourceNode.start(0); 
+
+                // --- UI/Status Update (Playing) ---
+                statusElement.textContent = UI.PLAYING_BACK;
+                statusElement.classList.remove('text-secondary', 'font-medium'); 
+                statusElement.classList.add('text-primary', 'font-bold', 'flex', 'items-center');
+
+            } catch (e) {
+                console.error("Web Audio Playback Error:", e);
+                isTutorPlaying = false;
+                errorFeedback.textContent = `${UI.PLAYBACK_ERROR}: ${e.message}. Cliquez sur le message pour réessayer.`;
+                errorFeedback.classList.remove('hidden');
+
+                // Reset status element to 'Playback Error'
+                statusElement.classList.remove('text-primary', 'flex', 'items-center'); 
+                statusElement.classList.add('text-red-600'); 
+                statusElement.innerHTML = `
+                    <svg class="w-4 h-4 inline-block mr-1 align-sub" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.383 3.013A1 1 0 0110 3v14a1 1 0 01-1.383.987l-6-3a1 1 0 01-.617-.922V5.935a1 1 0 01.617-.922l6-3z" clip-rule="evenodd"></path></svg>
+                    ${UI.PLAYBACK_ERROR}
+                `;
+            }
+        }
+        
+        // --- Core Functions ---
+        
+        /**
+         * Adds a message to the UI and updates the chat history.
+         * @returns {HTMLElement} The newly created message container element.
+         */
+        function displayMessage(role, text, audioData = null) {
+            if (role === 'model') {
+                chatHistory.push({ role: 'model', parts: [{ text }] });
+            }
+            
+            const isUser = role === 'user';
+            const bubbleClass = isUser ? 'justify-end' : 'justify-start';
+            const contentClass = isUser ? 'bg-user-bubble rounded-tr-none' : 'bg-ai-bubble rounded-tl-none';
+            const roleText = isUser ? UI.USER_ROLE : UI.TUTOR_ROLE;
+            const roleColor = isUser ? 'text-primary' : 'text-secondary';
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${bubbleClass}`;
+            
+            const content = document.createElement('div');
+            content.className = `max-w-xs md:max-w-md p-3 rounded-xl ${contentClass} text-gray-800 shadow-sm`;
+
+            if (!isUser) {
+                content.classList.add('ai-message-playable');
+                
+                content.setAttribute('data-base64-audio', audioData ? audioData.base64Data : 'unavailable');
+                content.setAttribute('data-sample-rate', audioData ? audioData.sampleRate : 'unavailable');
+                
+                let statusClass = 'tts-status text-xs mt-2 text-secondary font-medium';
+
+                content.innerHTML = `
+                    <p class="font-semibold ${roleColor} mb-1 text-sm">${roleText}</p>
+                    <p>${text}</p>
+                    <div class="${statusClass}">
+                        <svg class="w-4 h-4 inline-block mr-1 align-sub" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.383 3.013A1 1 0 0110 3v14a1 1 0 01-1.383.987l-6-3a1 1 0 01-.617-.922V5.935a1 1 0 01.617-.922l6-3z" clip-rule="evenodd"></path></svg>
+                        ${UI.CLICK_TO_REPLAY}
+                    </div>
+                `;
+                
+                 content.addEventListener('click', () => {
+                    const base64 = content.getAttribute('data-base64-audio');
+                    const sampleRate = parseInt(content.getAttribute('data-sample-rate'));
+                    const status = content.querySelector('.tts-status');
+
+                    if (base64 === 'loading') {
+                        errorFeedback.textContent = "L'audio est toujours en cours de génération. Veuillez patienter.";
+                        errorFeedback.classList.remove('hidden');
+                        return;
+                    }
+
+                    if (isTutorPlaying) {
+                        stopTutorAudio(); 
+                        if (status.textContent.includes(UI.PLAYING_BACK.split('...')[0])) return; 
+                    }
+                    
+                    if (base64 && base64 !== 'unavailable') {
+                       playTutorAudioUsingContext(base64, sampleRate, status);
+                    }
+                });
+
+            } else {
+                 content.innerHTML = `
+                    <p class="font-semibold ${roleColor} mb-1 text-sm">${roleText}</p>
+                    <p>${text}</p>
+                `;
+            }
+
+            messageDiv.appendChild(content);
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        /**
+         * Sets the application UI state (loading, idle, recording)
+         */
+        function setAppState(state) {
+            isProcessing = state === 'loading' || state === 'processing_audio' || state === 'generating_speech';
+            isRecording = state === 'recording';
+            
+            stopUserPlayback(); 
+
+            // Send button logic: disabled if processing, recording, or input is empty
+            const isSendDisabled = isProcessing || isRecording || chatInput.value.trim() === '';
+            sendButton.disabled = isSendDisabled;
+
+            sendLoading.classList.toggle('hidden', state !== 'loading' && state !== 'processing_audio' && state !== 'generating_speech');
+            
+            if (state === 'loading') {
+                sendButtonText.textContent = UI.LOADING_TEXT;
+            } else if (state === 'processing_audio') {
+                sendButtonText.textContent = UI.PROCESSING_AUDIO;
+            } else if (state === 'generating_speech') {
+                 sendButtonText.textContent = UI.GENERATING_SPEECH;
+            } else {
+                sendButtonText.textContent = UI.SEND_MESSAGE;
+            }
+            
+            // --- Mic Button Management ---
+            micButton.disabled = isProcessing; 
+            micIcon.classList.toggle('hidden', state !== 'requesting_mic' && state !== 'processing_audio' && state !== 'generating_speech');
+            micLoading.classList.toggle('hidden', state === 'requesting_mic' || state === 'processing_audio' || state === 'generating_speech');
+            micButton.classList.toggle('bg-red-500', !isRecording);
+            micButton.classList.toggle('hover:bg-red-600', !isRecording);
+            micButton.classList.toggle('bg-primary', isRecording);
+            micButton.classList.toggle('hover:bg-indigo-700', isRecording);
+            
+            // --- Status and Error Management ---
+            inputStatus.textContent = '';
+            errorFeedback.classList.add('hidden');
+            playbackButton.classList.add('hidden'); 
+            
+            if (state === 'recording') {
+                inputStatus.textContent = UI.RECORDING;
+                micIcon.classList.add('animate-pulse-mic');
+            } else if (state === 'processing_audio') {
+                 inputStatus.textContent = UI.PROCESSING_AUDIO;
+            } else if (state === 'ready_to_send') {
+                 inputStatus.textContent = UI.RECORDING_READY;
+                 playbackButton.classList.remove('hidden');
+                 playbackButton.disabled = recordedBlob === null;
+            } else {
+                micIcon.classList.remove('animate-pulse-mic');
+            }
+        }
+        
+        /**
+         * Plays back the recorded user audio.
+         */
+        function playbackUserAudio() {
+            if (isPlaybackPlaying) {
+                stopUserPlayback();
+                playbackButtonText.textContent = UI.PLAY_MY_VOICE;
+                return;
+            }
+
+            if (userPlaybackAudio && recordedBlob) {
+                stopTutorAudio(); 
+                
+                isPlaybackPlaying = true;
+                playbackButtonText.textContent = UI.STOP_PLAYBACK;
+                
+                // Create a temporary audio element if it doesn't exist
+                if (!userPlaybackAudio) {
+                    audioUrl = URL.createObjectURL(recordedBlob);
+                    userPlaybackAudio = new Audio(audioUrl);
+                    userPlaybackAudio.onended = () => {
+                        stopUserPlayback();
+                        playbackButtonText.textContent = UI.PLAY_MY_VOICE; 
+                    };
+                }
+
+                userPlaybackAudio.play().catch(e => {
+                    console.error("User Playback Error:", e);
+                    errorFeedback.textContent = "Impossible de lire votre enregistrement.";
+                    errorFeedback.classList.remove('hidden');
+                    stopUserPlayback();
+                });
+            }
+        }
+        
+        /**
+         * Processes the recorded audio blob for transcription and prepares the UI.
+         */
+        async function processAudioForTranscription(audioBlob) {
+            setAppState('processing_audio');
+            
+            try {
+                const base64Audio = await blobToBase64(audioBlob);
+                
+                const payload = {
+                    contents: [
+                        { 
+                            parts: [
+                                { text: "Transcribe the following audio recording in French and return ONLY the resulting text. Do not add any greetings, explanations, or punctuation other than what is spoken." },
+                                {
+                                    inlineData: {
+                                        mimeType: audioBlob.type,
+                                        data: base64Audio
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                };
+                
+                const response = await fetchWithRetry(LLM_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                const transcript = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+                if (transcript) {
+                    chatInput.value = transcript;
+                } else {
+                    errorFeedback.textContent = UI.TRANSCRIPTION_ERROR;
+                    errorFeedback.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error("Transcription Error:", error);
+                errorFeedback.textContent = `Erreur de Transcription: ${error.message}.`;
+                errorFeedback.classList.remove('hidden');
+            } finally {
+                setAppState('ready_to_send'); 
+            }
+        }
+        
+        /**
+         * Handles the click event for the microphone button (start/stop recording).
+         */
+        async function handleMicClick() {
+            if (isRecording) {
+                // STOP recording
+                if (mediaRecorder) {
+                    mediaRecorder.stop();
+                    setAppState('processing_audio'); 
+                }
+                return;
+            }
+
+            if (isProcessing) return;
+
+            // START recording
+            resetRecordingState(); 
+            setAppState('requesting_mic'); 
+
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recordedChunks = [];
+                chatInput.value = ''; 
+
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm; codecs=opus') 
+                    ? 'audio/webm; codecs=opus' 
+                    : 'audio/webm';
+                    
+                mediaRecorder = new MediaRecorder(audioStream, { mimeType });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const finalMimeType = mediaRecorder.mimeType || 'audio/webm'; 
+                    recordedBlob = new Blob(recordedChunks, { type: finalMimeType });
+                    
+                    audioUrl = URL.createObjectURL(recordedBlob);
+                    userPlaybackAudio = new Audio(audioUrl);
+
+                    audioStream.getTracks().forEach(track => track.stop());
+                    audioStream = null;
+
+                    processAudioForTranscription(recordedBlob);
+                };
+
+                mediaRecorder.start();
+                setAppState('recording');
+
+            } catch (err) {
+                console.error('Microphone access denied or error:', err);
+                errorFeedback.textContent = UI.MIC_ACCESS_DENIED;
+                errorFeedback.classList.remove('hidden');
+                setAppState('idle'); 
+            }
+        }
+        
+        /**
+         * Calls the TTS API to generate and return the audio data object.
+         * @returns {{base64Data: string, sampleRate: number}|null}
+         */
+        async function generateTutorAudio(text) {
+            
+            const payload = {
+                contents: [{ parts: [{ text: `Say this in French in a clear, friendly voice: ${text}` }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: TTS_VOICE }
+                        }
+                    }
+                },
+                model: TTS_MODEL
+            };
+
+            try {
+                const response = await fetchWithRetry(TTS_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                const part = result?.candidates?.[0]?.content?.parts?.[0];
+                const audioData = part?.inlineData?.data;
+                const mimeType = part?.inlineData?.mimeType;
+
+                if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
+                    const rateMatch = mimeType.match(/rate=(\d+)/);
+                    const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+                    
+                    return { base64Data: audioData, sampleRate };
+
+                } else {
+                    throw new Error("TTS response was incomplete or format was wrong.");
+                }
+
+            } catch (error) {
+                console.error("TTS Error:", error);
+                return null;
+            }
+        }
+
+
+        /**
+         * Generates the LLM response (text) and audio data, displays it, and triggers playback.
+         */
+        async function getTutorResponse() {
+            setAppState('loading');
+            
+            const systemInstruction = `Vous êtes un tuteur de conversation française natif, amical et très compétent.
+                Votre objectif principal est d'aider l'utilisateur à pratiquer l'expression orale et écrite en français naturel et idiomatique.
+                Pour chaque tour de l'utilisateur :
+                1. Fournissez des corrections ou des suggestions douces et naturelles pour toute formulation peu naturelle utilisée par l'utilisateur.
+                2. Répondez naturellement à leur message, en maintenant la conversation engageante.
+                3. Posez TOUJOURS une question de suivi pertinente pour maintenir le dialogue.
+                4. Gardez vos réponses concises (3 à 5 phrases maximum).
+                5. N'utilisez pas de markdown (comme le gras ou les listes) dans votre réponse.`;
+
+            const payload = {
+                contents: chatHistory,
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+            };
+
+            let tutorText;
+            let audioData = null;
+            let messageElement = null;
+
+            try {
+                // 1. Get Text Response
+                const response = await fetchWithRetry(LLM_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                tutorText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!tutorText) {
+                    throw new Error("Received an empty response from the Language Model.");
+                }
+
+                // 2. Generate Audio Data
+                setAppState('generating_speech');
+                audioData = await generateTutorAudio(tutorText);
+                
+                // 3. Display message with the data
+                messageElement = displayMessage('model', tutorText, audioData);
+                
+                // 4. Auto-play the audio if available
+                if (audioData && messageElement) {
+                    const status = messageElement.querySelector('.tts-status');
+                    playTutorAudioUsingContext(audioData.base64Data, audioData.sampleRate, status);
+                }
+                
+            } catch (error) {
+                console.error("LLM Error:", error);
+                errorFeedback.textContent = `Erreur: Impossible d'obtenir une réponse du tuteur. (${error.message}). Audio indisponible.`;
+                errorFeedback.classList.remove('hidden');
+                chatHistory.pop(); 
+            } finally {
+                setAppState('idle');
+            }
+        }
+
+        /**
+         * Main function to handle sending user input.
+         */
+        function sendUserMessage(userText) {
+            userText = userText.trim();
+            if (!userText || isProcessing) return;
+
+            stopTutorAudio();
+
+            displayMessage('user', userText);
+
+            chatHistory.push({ role: 'user', parts: [{ text: userText }] });
+
+            chatInput.value = '';
+            sendButton.disabled = true;
+            resetRecordingState(); 
+
+            getTutorResponse();
+        }
+
+        // --- UTILITIES ---
+
+        async function fetchWithRetry(url, options, maxRetries = 5) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) return response;
+                    const errorDetails = await response.text();
+                    console.error(`Attempt ${i + 1} failed. Status: ${response.status}. URL: ${url}. Details:`, errorDetails);
+                    
+                    if (response.status === 403) {
+                         throw new Error(`Authorization Failed (403 Forbidden). Ensure the API key is valid.`);
+                    }
+                    if ((response.status === 429 || response.status >= 500) && i < maxRetries - 1) {
+                        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        continue;
+                    }
+                    throw new Error(`API Request Failed: ${response.status} ${response.statusText}`);
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+            throw new Error("Exceeded maximum retries.");
+        }
+        
+        // Converts Blob to Base64 for the Gemini API
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+
+        // --- Event Listeners ---
+
+        micButton.addEventListener('click', handleMicClick);
+
+        playbackButton.addEventListener('click', playbackUserAudio); 
+
+        sendButton.addEventListener('click', () => {
+            sendUserMessage(chatInput.value);
+        });
+
+        chatInput.addEventListener('input', () => {
+            sendButton.disabled = chatInput.value.trim() === '' || isProcessing || isRecording;
+        });
+
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!sendButton.disabled) {
+                    sendUserMessage(chatInput.value);
+                }
+            }
+        });
+
+        // --- Initial Message Click Handler (The User Gesture) ---
+        initialMessageElement.addEventListener('click', async () => {
+            if (isProcessing) return;
+
+            const base64 = initialMessageElement.getAttribute('data-base64-audio');
+            const sampleRate = parseInt(initialMessageElement.getAttribute('data-sample-rate'));
+            const status = initialMessageElement.querySelector('.tts-status');
+
+            stopTutorAudio();
+            stopUserPlayback();
+            
+            // Do nothing if audio is playing or not yet ready
+            if (status.textContent.includes(UI.PLAYING_BACK.split('...')[0]) || base64 === 'pending' || base64 === 'loading') return; 
+            
+            // Play the audio (This is the user-initiated playback)
+            if (base64 && base64 !== 'unavailable') {
+                playTutorAudioUsingContext(base64, sampleRate, status, true);
+            }
+        });
+
+
+        // Initialize on load
+        window.onload = () => {
+            setAppState('idle'); 
+            const status = initialMessageElement.querySelector('.tts-status');
+            const initialText = initialMessageElement.getAttribute('data-text');
+
+            // Function to handle initial audio generation
+            const initializeTutor = async () => {
+                initialMessageElement.setAttribute('data-base64-audio', 'loading'); 
+                
+                // Show generating status
+                status.innerHTML = `<div class="spinner mr-2 w-4 h-4" style="border-top: 4px solid #4F46E5;"></div> Génération de la voix du Tuteur...`;
+                
+                const generatedData = await generateTutorAudio(initialText);
+
+                // 2. Update status and store data
+                if (generatedData) {
+                    initialMessageElement.setAttribute('data-base64-audio', generatedData.base64Data);
+                    initialMessageElement.setAttribute('data-sample-rate', generatedData.sampleRate);
+                    
+                    // Ready state: prompt user for the required gesture
+                    status.classList.remove('text-secondary', 'flex', 'items-center');
+                    status.classList.add('text-primary'); 
+                    status.innerHTML = `
+                        <svg class="w-4 h-4 inline-block mr-1 align-sub" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.383 3.013A1 1 0 0110 3v14a1 1 0 01-1.383.987l-6-3a1 1 0 01-.617-.922V5.935a1 1 0 01.617-.922l6-3z" clip-rule="evenodd"></path></svg>
+                        ${UI.CONVERSATION_READY}
+                    `;
+                } else {
+                    initialMessageElement.setAttribute('data-base64-audio', 'unavailable');
+                    status.classList.add('text-red-600');
+                    status.classList.remove('text-primary');
+                    status.innerHTML = `
+                        <svg class="w-4 h-4 inline-block mr-1 align-sub" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M9.383 3.013A1 1 0 0110 3v14a1 1 0 01-1.383.987l-6-3a1 1 0 01-.617-.922V5.935a1 1 0 01.617-.922l6-3z" clip-rule="evenodd"></path></svg>
+                        ${UI.VOICE_UNAVAILABLE}
+                    `;
+                }
+            };
+
+            // Start the initialization sequence
+            initializeTutor();
+        };
+    </script>
+</body>
+</html>
